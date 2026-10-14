@@ -165,7 +165,13 @@ def transform_text(text: str, up_id: str, launcher: bool, path: Path) -> str:
     others = other_display_rules(up_id, launcher)
     out = []
     for line in lines:
-        if COPYRIGHT_LINE.search(line):
+        # Apache-2.0 4(d): ship NOTICE next to the licence files in every package
+        if path.parts and "packaging" in path.parts and "LICENSE-APACHE" in line and "NOTICE" not in line:
+            if "'LICENSE-APACHE'" in line:
+                line = line.replace("'LICENSE-APACHE'", "'LICENSE-APACHE', 'NOTICE'")
+            elif re.search(r"\bfor \w+ in .*LICENSE-APACHE", line):
+                line = line.replace("LICENSE-APACHE", "LICENSE-APACHE NOTICE", 1)
+        if COPYRIGHT_LINE.search(line) and not re.search(r"\bfor \w+ in ", line):
             out.append(line)
             continue
         for rx, fn in rules:
@@ -177,12 +183,6 @@ def transform_text(text: str, up_id: str, launcher: bool, path: Path) -> str:
                 line = o[0].sub(o[1], line)
         line = rename_own(line, up_id)
         line = line.replace("ai.storyteller.", "com.pintaz.")
-        # Apache-2.0 4(d): ship NOTICE next to the licence files in every package
-        if path.parts and "packaging" in path.parts and "LICENSE-APACHE" in line and "NOTICE" not in line:
-            if "'LICENSE-APACHE'" in line:
-                line = line.replace("'LICENSE-APACHE'", "'LICENSE-APACHE', 'NOTICE'")
-            elif re.search(r"\bfor \w+ in .*LICENSE-APACHE", line):
-                line = line.replace("LICENSE-APACHE", "LICENSE-APACHE NOTICE", 1)
         line = line.replace("docs/brand/artcraft-", "assets/z-brand/")
         line = line.replace("docs\\brand\\artcraft-", "assets\\z-brand\\")
         line = line.replace("docs\\\\brand\\\\artcraft-", "assets\\\\z-brand\\\\")
