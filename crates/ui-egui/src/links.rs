@@ -32,9 +32,9 @@ pub fn open(app: &mut PhotozApp, ctx: &egui::Context, url: &str) -> Value {
     json!({"url": url})
 }
 
-/// The prominent "Get help on GitHub" button.
+/// The prominent "Join us on GitHub" button.
 pub fn discord_button(app: &mut PhotozApp, ui: &mut egui::Ui, min_width: f32) -> egui::Response {
-    let r = crate::widgets::primary_button(ui, tl!("Get help on GitHub"), min_width).on_hover_text(DISCORD);
+    let r = crate::widgets::primary_button(ui, tl!("Join us on GitHub"), min_width).on_hover_text(DISCORD);
     if r.clicked() {
         open(app, ui.ctx(), DISCORD);
     }

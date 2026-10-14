@@ -3308,7 +3308,7 @@ cameraRaw	Yellow	Sárga
 	Interval	Intervallum
 	Invalid {mode} profile	Érvénytelen profil ({mode})
 	Its layers don't fit the GPU memory budget. Raising Memory usage in Preferences › Performance raises the budget, up to a quarter of this computer's memory.	A dokumentum rétegei nem férnek el a GPU memóriakeretében. Ha a Beállítások › Teljesítmény alatt növeled a memóriahasználatot, a keret is nő, legfeljebb a számítógép memóriájának negyedéig.
-	Get help on GitHub	Get help on GitHub
+	Join us on GitHub	Join us on GitHub
 	Keep Using CPU	Marad a CPU
 	Kernel	Szűrőmag
 	Keyboard	Billentyűzet

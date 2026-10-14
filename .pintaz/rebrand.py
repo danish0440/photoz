@@ -58,7 +58,7 @@ BIN_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".icns", ".ttf", ".
            ".zip", ".gz", ".xz", ".zst", ".bin", ".wasm", ".mp4", ".mov", ".wav", ".mp3", ".flac", ".ogg", ".tif", ".tiff",
            ".heic", ".avif", ".exr", ".dng", ".cr2", ".nef", ".arw", ".docx", ".xlsx", ".pptx", ".dwg", ".dxf", ".idml", ".indd",
            ".kra", ".ai", ".eps", ".jxl", ".qoi", ".bmp", ".pcx", ".tga", ".hdr", ".dds", ".ktx2", ".spv", ".a", ".lib", ".so", ".dll"}
-COPYRIGHT_LINE = re.compile(r"(?i)copyright|©|\(c\) 20")
+COPYRIGHT_LINE = re.compile(r"(?i)copyright\s*(\(c\)|©|\d{4})|©|\(c\) 20\d\d")
 
 PALETTE = {"paper": (251, 246, 234), "cream": (244, 239, 230), "jade": (31, 77, 58), "mustard": (211, 162, 80), "ink": (26, 36, 34)}
 
@@ -109,6 +109,18 @@ def phrase_rules(up_id: str, launcher: bool):
         (re.compile(r"https://getartcraft\.com/apps/(\{[^}]*\})"), lambda m: f"https://github.com/{OWNER}/{m.group(1)}"),
         (re.compile(r"https?://(www\.)?getartcraft\.com[^\s\"'<>(){}`]*"), lambda m: fork),
         (re.compile(r"https://discord\.gg/artcraft"), lambda m: fork + "/issues"),
+        (re.compile(r" \(discord\.gg/artcraft\)"), lambda m: ""),
+        (re.compile(r"discord\.gg/artcraft"), lambda m: f"github.com/{OWNER}/{zid}/issues"),
+        (re.compile(r" on getartcraft\.com"), lambda m: " on GitHub"),
+        (re.compile(r"Join Our Discord|Join our Discord|Join the Discord"), lambda m: "Get help on GitHub"),
+        (re.compile(r"the ArtCraft community Discord"), lambda m: "this app's GitHub issues"),
+        (re.compile(r"ArtCraft community"), lambda m: "community"),
+        (re.compile(r"ArtCraft [Ww]ebsite"), lambda m: "Upstream project"),
+        (re.compile(r"Part of ArtCraft\. ?"), lambda m: ""),
+        (re.compile(r" ?Part of the ArtCraft family( of [a-z ]+)?\."), lambda m: ""),
+        (re.compile(r"(?<![/\w.])getartcraft\.com/apps/([a-z0-9-]+)"),
+         lambda m: f"github.com/{OWNER}/{APPS[m.group(1)][2]}" if m.group(1) in APPS else f"github.com/{OWNER}/{zid}"),
+        (re.compile(r"\bon Discord\b"), lambda m: "on GitHub"),
         # our own repo (never a cargo git dependency on another storytold repo)
         (re.compile(r"(?<!git = \")(?<!git\+)(https://github\.com/)?storytold/" + re.escape(up_repo) + r"(?![-\w])"),
          lambda m: (m.group(1) or "") + f"{OWNER}/{zid}"),
@@ -120,6 +132,12 @@ def phrase_rules(up_id: str, launcher: bool):
         (re.compile(r"ArtCraft on GitHub"), lambda m: "Source code on GitHub"),
         (re.compile(r" from the ArtCraft team"), lambda m: ""),
         (re.compile(r"ArtCraft API"), lambda m: "release feed"),
+        (re.compile(r"ArtCraft App Page"), lambda m: "App Page"),
+        (re.compile(r"ArtCraft — more creative apps"), lambda m: "More Z apps"),
+        (re.compile(r" ?Part of the ArtCraft suite[^.\"]*\."), lambda m: ""),
+        (re.compile(r"the ArtCraft team and community"), lambda m: "the upstream team and community"),
+        (re.compile(r"the ArtCraft team"), lambda m: "the upstream team"),
+        (re.compile(r'"getartcraft\.com"'), lambda m: '"Upstream"'),
         (re.compile(r"Craft App Suite"), lambda m: "Z App Suite"),
         (re.compile(r"Craft Apps\b"), lambda m: "Z Apps"),
         (re.compile(r"Craft App\b"), lambda m: "Z App"),
@@ -130,8 +148,9 @@ def phrase_rules(up_id: str, launcher: bool):
         (re.compile(r"ArtCraft on \{name\}"), lambda m: "{name}"),
         (re.compile(r"Visit getartcraft\.com"), lambda m: "Visit the project page"),
         (re.compile(r'tl!\("Discord"\)'), lambda m: 'tl!("Help")'),
+        (re.compile(r'(?<![\w(])"Discord"'), lambda m: '"Help"'),  # bare button label; the link goes to GitHub issues
         (re.compile(r"ArtCraft apps\b"), lambda m: "Z apps"),
-        (re.compile(r"ArtCraft(?=[A-Z][a-z])"), lambda m: "Z"),  # identifiers: ArtCraftApi -> ZApi, ArtCraftInstallDirDlg -> ZInstallDirDlg
+        (re.compile(r"ArtCraft(?=[A-Z][a-z])(?!Launcher)"), lambda m: "Z"),  # identifiers: ArtCraftApi -> ZApi, ArtCraftInstallDirDlg -> ZInstallDirDlg
     ]
     if launcher:
         # every suite repo -> our fork; the launcher's own repo too (not craft-launcher-assets)
@@ -171,25 +190,44 @@ def transform_text(text: str, up_id: str, launcher: bool, path: Path) -> str:
                 line = line.replace("'LICENSE-APACHE'", "'LICENSE-APACHE', 'NOTICE'")
             elif re.search(r"\bfor \w+ in .*LICENSE-APACHE", line):
                 line = line.replace("LICENSE-APACHE", "LICENSE-APACHE NOTICE", 1)
+        def tx(line):
+            for rx, fn in rules:
+                line = rx.sub(fn, line)
+            for o in others:
+                if o[0] == "full":
+                    line = rename_own(line, o[1])
+                else:
+                    line = o[0].sub(o[1], line)
+            line = rename_own(line, up_id)
+            line = line.replace("ai.storyteller.", "com.pintaz.")
+            line = line.replace("docs/brand/artcraft-", "assets/z-brand/")
+            line = line.replace("docs\\brand\\artcraft-", "assets\\z-brand\\")
+            line = line.replace("docs\\\\brand\\\\artcraft-", "assets\\\\z-brand\\\\")
+            return line
         if COPYRIGHT_LINE.search(line) and not re.search(r"\bfor \w+ in ", line):
-            out.append(line)
-            continue
-        for rx, fn in rules:
-            line = rx.sub(fn, line)
-        for o in others:
-            if o[0] == "full":
-                line = rename_own(line, o[1])
+            if path.suffix == ".rs":
+                # a copyright notice inside code: the notice text (string literals) stays, the code is renamed
+                parts, pos = [], 0
+                for m in _STR.finditer(line):
+                    parts.append(tx(line[pos:m.start()]))
+                    parts.append(m.group(0))
+                    pos = m.end()
+                parts.append(tx(line[pos:]) if not line[pos:].lstrip().startswith("//") else line[pos:])
+                out.append("".join(parts))
             else:
-                line = o[0].sub(o[1], line)
-        line = rename_own(line, up_id)
-        line = line.replace("ai.storyteller.", "com.pintaz.")
-        line = line.replace("docs/brand/artcraft-", "assets/z-brand/")
-        line = line.replace("docs\\brand\\artcraft-", "assets\\z-brand\\")
-        line = line.replace("docs\\\\brand\\\\artcraft-", "assets\\\\z-brand\\\\")
-        out.append(line)
+                out.append(line)
+            continue
+        out.append(tx(line))
     text = "\n".join(out)
     if path.suffix == ".tsv":
         text = fix_tsv(text).replace("ArtCraft", "Upstream")
+    posix = path.as_posix()
+    if path.suffix != ".tsv" and ("/i18n" in posix or "/locales/" in posix or "/locale/" in posix or path.stem in ("i18n", "l10n")):
+        # translated text: no ArtCraft name, and the old Discord links now go to GitHub
+        text = re.sub(r"ArtCraft Z Apps|ArtCraft", "Z", text).replace("Discord", "GitHub")
+    text = text.replace("ArtCraft Z Apps", "Z Apps")
+    # an ArtCraft "A" mark hard-coded as a path (DesignCraft): our Z in the same view box
+    text = re.sub(r'(const MARK_PATH: &str = )"[^"]*"', lambda m: m.group(1) + '"M10,0H106V20L40,77H106V97H10V77L76,20H10Z"', text)
     if path.suffix == ".wxs":
         # new MSI identity: an upstream MSI must never be "upgraded" (replaced) by ours, or vice versa
         import uuid
@@ -230,7 +268,7 @@ def is_text(p: Path) -> bool:
         b = p.read_bytes()
     except OSError:
         return False
-    if b"\0" in b[:65536]:
+    if b"\0" in b[:65536] and p.suffix.lower() not in (".rs", ".toml", ".ps1", ".sh", ".wxs", ".plist", ".in"):
         return False
     try:
         b.decode("utf-8")
@@ -413,6 +451,8 @@ def replace_brand_assets(root: Path, zname: str, zid: str):
     zb = root / "assets" / "z-brand"
     zb.mkdir(parents=True, exist_ok=True)
     master = master_icon(zid if zid == "appz" else zid)
+    # the upstream wordmark said "ArtCraft" (the suite); ours says "Z Apps" (AppZ keeps its own name)
+    mark_text = zname if zid == "appz" else "Z Apps"
     for p in sorted(bd.iterdir()):
         if p.name == "LICENSE-brand.txt":
             continue
@@ -420,7 +460,7 @@ def replace_brand_assets(root: Path, zname: str, zid: str):
         dst = zb / stem
         if p.suffix == ".svg":
             if "logo" in stem:
-                dst.write_text(wordmark_svg(zname, "#FFFFFF" if "white" in stem else "#1F4D3A"), encoding="utf-8")
+                dst.write_text(wordmark_svg(mark_text, "#FFFFFF" if "white" in stem else "#1F4D3A"), encoding="utf-8")
             else:
                 dst.write_text(icon_svg("appz" if zid == "appz" else zid), encoding="utf-8")
         elif p.suffix == ".png":
@@ -431,7 +471,7 @@ def replace_brand_assets(root: Path, zname: str, zid: str):
                 im = Image.new("RGBA", size, (0, 0, 0, 0))
                 dr = ImageDraw.Draw(im)
                 f = ImageFont.truetype(str(FONT_SERIF_BOLD), max(10, int(size[1] * 0.8)))
-                dr.text((0, size[1] / 2), zname, font=f, fill=(255, 255, 255) if "white" in stem else PALETTE["jade"], anchor="lm")
+                dr.text((0, size[1] / 2), mark_text, font=f, fill=(255, 255, 255) if "white" in stem else PALETTE["jade"], anchor="lm")
                 im.save(dst)
             elif "black" in stem:
                 # monochrome template icon (macOS menu bar): black Z on transparent
@@ -478,7 +518,55 @@ def add_about(root: Path, up_id: str, launcher: bool) -> list[str]:
         if n:
             p.write_text(t2, encoding="utf-8")
             hits.append(str(p.relative_to(root)))
+    if not hits:
+        hits = about_fallback(root, up_id)
     return hits
+
+
+_STR = re.compile(r'r#"(?:.|\n)*?"#|"(?:\\.|[^"\\])*"')
+
+
+def about_fallback(root: Path, up_id: str) -> list[str]:
+    """Second anchor: in a file that draws "About <ZName>", the first `ui.…(` statement that shows
+    the version (`{version}` / CARGO_PKG_VERSION / build_info). Insert the credit after that whole
+    statement (parentheses matched outside string literals), at the statement's indent."""
+    zname = APPS[up_id][3]
+    cands = []
+    for p in walk(root):
+        if p.suffix != ".rs" or "test" in p.name or "/i18n" in p.as_posix():
+            continue
+        t = p.read_text(encoding="utf-8")
+        if f"About {zname}" in t or p.name == "about.rs" or '"about_tab"' in t:
+            cands.append((0 if p.name == "about.rs" else 1, p, t))
+    start_rx = re.compile(r"^\s*(?:(?:ui|p|painter)\.\w+\(|crate::[\w:]+\()")
+    for _, p, t in sorted(cands, key=lambda c: (c[0], str(c[1]))):
+        lines = t.split("\n")
+        for i, line in enumerate(lines):
+            if not re.search(r"\{version\}|\{v\}|CARGO_PKG_VERSION|build_info|long_version|version_line\(", line):
+                continue
+            s = i
+            while s >= 0 and not start_rx.match(lines[s]):
+                if re.search(r"[;{}]\s*$", lines[s]) and s != i:
+                    s = -1
+                    break
+                s -= 1
+            if s < 0:
+                continue
+            depth, e = 0, s
+            while e < len(lines):
+                depth += _STR.sub('""', lines[e]).count("(") - _STR.sub('""', lines[e]).count(")")
+                if depth <= 0 and lines[e].rstrip().endswith(";"):
+                    break
+                e += 1
+            if e >= len(lines):
+                continue
+            ind = re.match(r"^(\s*)", lines[s]).group(1)
+            rich = "egui::RichText::new(\"by PINTAZ\").strong()" if "egui::" in t else "\"by PINTAZ\""
+            lines[e + 1:e + 1] = [f"{ind}// {ABOUT_MARK}: required credit (Apache-2.0 change notice; ArtCraft brand licence)",
+                                  f"{ind}ui.label({rich});", f"{ind}ui.label(\"{credit_line(up_id)}\");"]
+            p.write_text("\n".join(lines), encoding="utf-8")
+            return [str(p.relative_to(root)) + f" (fallback, after line {e + 1})"]
+    return []
 
 
 def append_notice(root: Path, up_id: str):
