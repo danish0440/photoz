@@ -105,7 +105,9 @@ def phrase_rules(up_id: str, launcher: bool):
         # links first (they contain ids)
         (re.compile(r"https://getartcraft\.com/apps/([a-z0-9-]+)"),
          lambda m: f"https://github.com/{OWNER}/{APPS[m.group(1)][2]}" if m.group(1) in APPS else fork),
-        (re.compile(r"https?://(www\.)?getartcraft\.com[^\s\"'<>)]*"), lambda m: fork),
+        # format-string placeholders (`/apps/{}`, `/apps/{slug}`) keep their argument
+        (re.compile(r"https://getartcraft\.com/apps/(\{[^}]*\})"), lambda m: f"https://github.com/{OWNER}/{m.group(1)}"),
+        (re.compile(r"https?://(www\.)?getartcraft\.com[^\s\"'<>(){}`]*"), lambda m: fork),
         (re.compile(r"https://discord\.gg/artcraft"), lambda m: fork + "/issues"),
         # our own repo (never a cargo git dependency on another storytold repo)
         (re.compile(r"(?<!git = \")(?<!git\+)(https://github\.com/)?storytold/" + re.escape(up_repo) + r"(?![-\w])"),
@@ -128,6 +130,8 @@ def phrase_rules(up_id: str, launcher: bool):
         (re.compile(r"ArtCraft on \{name\}"), lambda m: "{name}"),
         (re.compile(r"Visit getartcraft\.com"), lambda m: "Visit the project page"),
         (re.compile(r'tl!\("Discord"\)'), lambda m: 'tl!("Help")'),
+        (re.compile(r"ArtCraft apps\b"), lambda m: "Z apps"),
+        (re.compile(r"ArtCraft(?=[A-Z][a-z])"), lambda m: "Z"),  # identifiers: ArtCraftApi -> ZApi, ArtCraftInstallDirDlg -> ZInstallDirDlg
     ]
     if launcher:
         # every suite repo -> our fork; the launcher's own repo too (not craft-launcher-assets)
@@ -173,7 +177,15 @@ def transform_text(text: str, up_id: str, launcher: bool, path: Path) -> str:
                 line = o[0].sub(o[1], line)
         line = rename_own(line, up_id)
         line = line.replace("ai.storyteller.", "com.pintaz.")
+        # Apache-2.0 4(d): ship NOTICE next to the licence files in every package
+        if path.parts and "packaging" in path.parts and "LICENSE-APACHE" in line and "NOTICE" not in line:
+            if "'LICENSE-APACHE'" in line:
+                line = line.replace("'LICENSE-APACHE'", "'LICENSE-APACHE', 'NOTICE'")
+            elif re.search(r"\bfor \w+ in .*LICENSE-APACHE", line):
+                line = line.replace("LICENSE-APACHE", "LICENSE-APACHE NOTICE", 1)
         line = line.replace("docs/brand/artcraft-", "assets/z-brand/")
+        line = line.replace("docs\\brand\\artcraft-", "assets\\z-brand\\")
+        line = line.replace("docs\\\\brand\\\\artcraft-", "assets\\\\z-brand\\\\")
         out.append(line)
     text = "\n".join(out)
     if path.suffix == ".tsv":
@@ -431,7 +443,7 @@ def replace_brand_assets(root: Path, zname: str, zid: str):
                 im.save(dst)
             else:
                 master.resize(size, Image.LANCZOS).save(dst)
-        run("git", "rm", "-q", str(p.relative_to(root)), cwd=root)
+        run("git", "rm", "-q", "-f", str(p.relative_to(root)), cwd=root)
     note = bd / "README.md"
     note.write_text("The ArtCraft marks that upstream keeps here were removed from this fork, as "
                     "LICENSE-brand.txt requires for modified versions. Our own art is in assets/z-brand/.\n", encoding="utf-8")
@@ -506,7 +518,7 @@ def write_workflows(root: Path, up_id: str):
     if wf.exists():
         for p in wf.iterdir():
             if p.is_file() and not p.name.endswith("-z.yml"):
-                run("git", "rm", "-q", str(p.relative_to(root)), cwd=root)
+                run("git", "rm", "-q", "-f", str(p.relative_to(root)), cwd=root)
     wf.mkdir(parents=True, exist_ok=True)
     fonts_ref = upstream_fonts_ref(root)
     for name in ("release-z.yml", "upstream-sync-z.yml"):
