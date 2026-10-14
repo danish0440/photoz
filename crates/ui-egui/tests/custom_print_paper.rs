@@ -1,11 +1,11 @@
 //! #3820: edit custom paper through the real Print dialog, preview it, and print safely to PDF.
 use egui::{Event, Key, Modifiers, PointerButton, vec2};
 use egui_kittest::{Harness, kittest::Queryable};
-use photocraft_ui_egui::{PhotocraftApp, file_ui::open_print};
+use photoz_ui_egui::{PhotozApp, file_ui::open_print};
 use serde_json::{Map, Value, json};
 
-fn app() -> (PhotocraftApp, u64) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), photocraft_ui_egui::Services::default());
+fn app() -> (PhotozApp, u64) {
+    let mut app = PhotozApp::new(photoz_engine::Session::new(), photoz_ui_egui::Services::default());
     app.run("file.new", json!({"width": 120, "height": 80, "name": "Custom paper"})).unwrap();
     let id = open_print(&mut app);
     // Every UI path in these fixtures is safe even if an unexpected Enter confirms the dialog.
@@ -13,20 +13,20 @@ fn app() -> (PhotocraftApp, u64) {
     (app, id)
 }
 
-fn show(ui: &mut egui::Ui, app: &mut PhotocraftApp) {
+fn show(ui: &mut egui::Ui, app: &mut PhotozApp) {
     if ui.ctx().fonts(|fonts| fonts.families().contains(&egui::FontFamily::Name("medium".into()))) {
-        photocraft_ui_egui::dialogs::show(app, ui.ctx());
+        photoz_ui_egui::dialogs::show(app, ui.ctx());
     }
 }
 
-fn harness(app: PhotocraftApp) -> Harness<'static, PhotocraftApp> {
+fn harness(app: PhotozApp) -> Harness<'static, PhotozApp> {
     let mut h = Harness::builder().with_size(vec2(1000.0, 900.0)).with_max_steps(64).build_ui_state(show, app);
-    PhotocraftApp::setup_context(&h.ctx, Default::default());
+    PhotozApp::setup_context(&h.ctx, Default::default());
     h.run_steps(4);
     h
 }
 
-fn click(h: &mut Harness<'_, PhotocraftApp>, label: &str) {
+fn click(h: &mut Harness<'_, PhotozApp>, label: &str) {
     if let Some(node) = h.query_by_label(label) {
         node.click();
     } else {
@@ -35,11 +35,11 @@ fn click(h: &mut Harness<'_, PhotocraftApp>, label: &str) {
     h.run_steps(3);
 }
 
-fn shown(h: &Harness<'_, PhotocraftApp>, text: &str) -> bool {
+fn shown(h: &Harness<'_, PhotozApp>, text: &str) -> bool {
     h.query_by_label(text).is_some() || h.query_by_value(text).is_some()
 }
 
-fn enter_length(h: &mut Harness<'_, PhotocraftApp>, label: &str, value: &str) {
+fn enter_length(h: &mut Harness<'_, PhotozApp>, label: &str, value: &str) {
     // Anchor the pointer to the real label; the existing length widget immediately follows it.
     let pos = h.get_by_label(label).rect().right_center() + vec2(35.0, 0.0);
     h.event(Event::PointerMoved(pos));
@@ -54,7 +54,7 @@ fn enter_length(h: &mut Harness<'_, PhotocraftApp>, label: &str, value: &str) {
     h.run_steps(3);
 }
 
-fn fields(h: &Harness<'_, PhotocraftApp>, id: u64) -> Map<String, Value> {
+fn fields(h: &Harness<'_, PhotozApp>, id: u64) -> Map<String, Value> {
     h.state().ui.dialogs.iter().find(|d| d.id == id).unwrap().fields.clone()
 }
 
@@ -90,13 +90,13 @@ fn custom_paper_ui_edits_reach_preview_and_pdf_and_restore_when_reopened() {
     click(&mut h, "Millimeters");
     click(&mut h, "Inches");
     assert_eq!(fields(&h, id)["paper"], edited["paper"]);
-    let preview = photocraft_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited.clone()), "file.print").unwrap();
+    let preview = photoz_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited.clone()), "file.print").unwrap();
     assert_eq!(preview.paper, (522.0, 666.0));
     click(&mut h, "Portrait");
     click(&mut h, "Landscape");
     let edited = fields(&h, id);
     assert_eq!(edited["paper"], json!([522.0, 666.0]), "orientation must not rewrite the unrotated custom dimensions");
-    let preview = photocraft_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited), "file.print").unwrap();
+    let preview = photoz_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited), "file.print").unwrap();
     assert_eq!(preview.paper, (666.0, 522.0));
     click(&mut h, "Print");
     let pdf = std::fs::read(&output).unwrap();
@@ -132,7 +132,7 @@ fn invalid_custom_paper_is_rejected_without_printing_or_changing_the_document() 
     click(&mut h, "Custom");
     enter_length(&mut h, "Paper Width", "0");
     let edited = fields(&h, id);
-    assert!(photocraft_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited), "file.print").is_err());
+    assert!(photoz_engine::print_cmds::layout(&h.state().session.active().unwrap().doc, &Value::Object(edited), "file.print").is_err());
     click(&mut h, "Print");
     let error = &h.state().ui.status;
     assert!(error.contains("paper is too small"), "{error}");

@@ -1,13 +1,13 @@
 //! Smart selection commands: Quick Selection, Object Selection, Select Subject, Select and Mask
-//! (Refine Edge) and Focus Area. The algorithms live in `photocraft_algo::segment` and
-//! `photocraft_algo::matting`; these commands pick the pixels to analyse (active layer or
+//! (Refine Edge) and Focus Area. The algorithms live in `photoz_algo::segment` and
+//! `photoz_algo::matting`; these commands pick the pixels to analyse (active layer or
 //! composite), run them, and store the result as the selection (or a mask / new layer).
 
-use photocraft_algo::matting::{self, RefineParams};
-use photocraft_algo::segment::{Sampler, SurfaceSampler, focus, grabcut, quick, subject};
-use photocraft_algo::selection::{Region, SelectionMode, combine_region};
-use photocraft_doc::{Document, Layer, LayerContent, LayerId, LayerMask};
-use photocraft_geom::Rect;
+use photoz_algo::matting::{self, RefineParams};
+use photoz_algo::segment::{Sampler, SurfaceSampler, focus, grabcut, quick, subject};
+use photoz_algo::selection::{Region, SelectionMode, combine_region};
+use photoz_doc::{Document, Layer, LayerContent, LayerId, LayerMask};
+use photoz_geom::Rect;
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -48,7 +48,7 @@ struct CompositeSampler<'a>(&'a Document);
 
 impl Sampler for CompositeSampler<'_> {
     fn rgba(&self, r: Rect) -> Vec<[f32; 4]> {
-        photocraft_compose::render(self.0, r).px
+        photoz_compose::render(self.0, r).px
     }
 }
 
@@ -158,7 +158,7 @@ pub const OBJECT_FINDER_ENTRIES: usize = 12;
 #[derive(Debug, Default)]
 pub struct ObjectFinderCache {
     doc: std::sync::Weak<Document>,
-    doc_id: Option<photocraft_doc::DocId>,
+    doc_id: Option<photoz_doc::DocId>,
     target: Option<LayerId>,
     regions: Vec<std::sync::Arc<Region>>,
 }
@@ -203,7 +203,7 @@ impl ObjectFinderCache {
     }
 
     /// Forget the results if they were computed from the document `id` (it is closing).
-    pub(crate) fn forget_doc(&mut self, id: photocraft_doc::DocId) {
+    pub(crate) fn forget_doc(&mut self, id: photoz_doc::DocId) {
         if self.doc_id == Some(id) {
             *self = Self::default();
         }
@@ -262,7 +262,7 @@ fn object_selection(s: &mut Session, p: &Value) -> Result<Value> {
 #[derive(Debug, Default)]
 pub struct SubjectCache {
     doc: std::sync::Weak<Document>,
-    doc_id: Option<photocraft_doc::DocId>,
+    doc_id: Option<photoz_doc::DocId>,
     /// The sampled layer; `None` = the composite.
     target: Option<LayerId>,
     region: Option<std::sync::Arc<Region>>,
@@ -270,7 +270,7 @@ pub struct SubjectCache {
 
 impl SubjectCache {
     /// Forget the result if it was computed from the document `id` (it is closing).
-    pub(crate) fn forget_doc(&mut self, id: photocraft_doc::DocId) {
+    pub(crate) fn forget_doc(&mut self, id: photoz_doc::DocId) {
         if self.doc_id == Some(id) {
             *self = Self::default();
         }
@@ -416,7 +416,7 @@ fn refine_edge(s: &mut Session, p: &Value) -> Result<Value> {
             let id = active.ok_or_else(|| EngineError::Other("no active layer".into()))?;
             s.edit("Select and Mask", |doc, _| {
                 let surface =
-                    region.as_ref().map(matting::region_surface).unwrap_or_else(|| photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8));
+                    region.as_ref().map(matting::region_surface).unwrap_or_else(|| photoz_raster::Surface::new(photoz_color::PixelFormat::GRAY8));
                 let existing = doc.layer(id).and_then(|l| l.mask.as_ref()).cloned().unwrap_or_else(LayerMask::reveal_all);
                 doc.layer_mut(id).ok_or(EngineError::NoLayer(id))?.mask = Some(LayerMask { surface, ..existing });
                 doc.selection = None;
@@ -525,7 +525,7 @@ pub fn specs() -> Vec<CommandSpec> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_algo::segment::Rng;
+    use photoz_algo::segment::Rng;
 
     /// A document whose background shows `px(x, y)` (RGB, 0–1), at the given depth.
     fn session_with(w: u32, h: u32, depth: u32, px: impl Fn(u32, u32) -> [f32; 3]) -> Session {
@@ -788,7 +788,7 @@ mod tests {
         s
     }
 
-    fn soft_count(s: &photocraft_raster::Surface, y: i32) -> usize {
+    fn soft_count(s: &photoz_raster::Surface, y: i32) -> usize {
         (0..80)
             .filter(|x| {
                 let v = s.sample_channel(*x, y, 0);
@@ -813,7 +813,7 @@ mod tests {
         let layers_before = s.active().unwrap().doc.layer_count();
         let r = s.execute("select.refineEdge", json!({"radius": 8, "output": "layerMask"})).unwrap();
         let d = s.active().unwrap();
-        let l = d.doc.layer(photocraft_doc::LayerId(r["layer"].as_u64().unwrap())).unwrap();
+        let l = d.doc.layer(photoz_doc::LayerId(r["layer"].as_u64().unwrap())).unwrap();
         let m = l.mask.as_ref().unwrap();
         assert!(soft_count(&m.surface, 20) >= 4);
         assert!(m.value(5, 20) > 0.99 && m.value(75, 20) < 0.01);
@@ -825,8 +825,8 @@ mod tests {
 
         // Existing mask settings (density, feather, linked) are preserved
         s.edit("set mask", |doc, _| {
-            doc.layers[0].mask = Some(photocraft_doc::LayerMask {
-                surface: photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8),
+            doc.layers[0].mask = Some(photoz_doc::LayerMask {
+                surface: photoz_raster::Surface::new(photoz_color::PixelFormat::GRAY8),
                 density: 0.75,
                 feather: 3.5,
                 linked: false,
@@ -836,7 +836,7 @@ mod tests {
         })
         .unwrap();
         let r = s.execute("select.refineEdge", json!({"radius": 8, "output": "layerMask"})).unwrap();
-        let l = s.active().unwrap().doc.layer(photocraft_doc::LayerId(r["layer"].as_u64().unwrap())).unwrap();
+        let l = s.active().unwrap().doc.layer(photoz_doc::LayerId(r["layer"].as_u64().unwrap())).unwrap();
         let m = l.mask.as_ref().unwrap();
         assert_eq!(m.density, 0.75);
         assert_eq!(m.feather, 3.5);
@@ -851,7 +851,7 @@ mod tests {
         // New layer: pixels with the refined alpha; the source is hidden.
         let r = s.execute("select.refineEdge", json!({"radius": 8, "feather": 1, "output": "newLayer"})).unwrap();
         let d = s.active().unwrap();
-        let nid = photocraft_doc::LayerId(r["layer"].as_u64().unwrap());
+        let nid = photoz_doc::LayerId(r["layer"].as_u64().unwrap());
         assert_eq!(d.active_layer, Some(nid));
         assert_eq!(d.doc.layer_count(), layers_before + 1);
         let nl = d.doc.layer(nid).unwrap();
@@ -868,7 +868,7 @@ mod tests {
         let r = s.execute("select.refineEdge", json!({"radius": 8, "decontaminate": true, "amount": 100})).unwrap();
         assert_eq!(r["output"], "newLayerWithMask");
         let d = s.active().unwrap();
-        let nl = d.doc.layer(photocraft_doc::LayerId(r["layer"].as_u64().unwrap())).unwrap();
+        let nl = d.doc.layer(photoz_doc::LayerId(r["layer"].as_u64().unwrap())).unwrap();
         assert!(nl.mask.is_some());
         let px = nl.surface().unwrap().pixel(41, 20);
         let orig = d.doc.layers[0].surface().unwrap().pixel(41, 20);

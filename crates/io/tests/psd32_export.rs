@@ -9,11 +9,11 @@
 mod common;
 
 use common::Features;
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::Document;
-use photocraft_geom::Size;
-use photocraft_io::*;
-use photocraft_psd::{Compression, LayerInfoPlacement, PsdFile, hdr};
+use photoz_color::{ColorMode, SampleType};
+use photoz_doc::Document;
+use photoz_geom::Size;
+use photoz_io::*;
+use photoz_psd::{Compression, LayerInfoPlacement, PsdFile, hdr};
 
 fn be32(b: &[u8], at: usize) -> u32 {
     u32::from_be_bytes(b[at..at + 4].try_into().unwrap())
@@ -118,7 +118,7 @@ fn layered_32bit_export_reimports_render_equal() {
     for mode in [ColorMode::Rgb, ColorMode::Grayscale] {
         let doc = common::gen_doc(mode, SampleType::F32, Features::ALL);
         let back = import("t.psd", &export_psd(&doc)).unwrap().document;
-        let (a, b) = (photocraft_compose::flatten(&doc).px, photocraft_compose::flatten(&back).px);
+        let (a, b) = (photoz_compose::flatten(&doc).px, photoz_compose::flatten(&back).px);
         assert_eq!(a.len(), b.len());
         let d = common::max_diff(&a, &b);
         assert!(d <= 1e-4, "{mode:?}: render differs by {d}");
@@ -154,7 +154,7 @@ fn photoshop_32bit_corpus_round_trip() {
         assert_32bit_layout(&name, &out);
         let back = import(&name, &out).unwrap().document;
         assert_eq!(doc.layer_count(), back.layer_count(), "{name}: layer count");
-        let (a, b) = (photocraft_compose::flatten(&doc).px, photocraft_compose::flatten(&back).px);
+        let (a, b) = (photoz_compose::flatten(&doc).px, photoz_compose::flatten(&back).px);
         assert_eq!(a.len(), b.len(), "{name}");
         let d = common::max_diff(&a, &b);
         assert!(d <= 1e-4, "{name}: render differs by {d}");
@@ -196,7 +196,7 @@ fn merged_oracle_does_not_treat_extra_channels_as_transparency() {
         let mut file = PsdFile::from_bytes(&export_psd(&doc)).unwrap();
         let color_channels = if mode == ColorMode::Rgb { 3 } else { 1 };
         file.header.channels = color_channels + 1;
-        file.layer_info = Some(photocraft_psd::LayerInfo { merged_alpha: false, layers: Vec::new(), padding: None });
+        file.layer_info = Some(photoz_psd::LayerInfo { merged_alpha: false, layers: Vec::new(), padding: None });
         file.image_data.compression = Compression::Raw;
         file.image_data.data = (0..color_channels).flat_map(|_| 2.0_f32.to_be_bytes()).chain(0.0_f32.to_be_bytes()).collect();
         assert!(!file.merged_has_alpha());

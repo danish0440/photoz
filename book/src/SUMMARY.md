@@ -1,6 +1,6 @@
 # Summary
 
-[PhotoCraft Documentation](README.md)
+[PhotoZ Documentation](README.md)
 
 # Getting started
 

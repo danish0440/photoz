@@ -1,13 +1,13 @@
-# Hosting PhotoCraft for the web
+# Hosting PhotoZ for the web
 
-`photocraft-web-<version>.zip` (from the GitHub release, or `packaging/web/package.sh`) holds a
-static site in `photocraft-web-<version>/`:
+`photoz-web-<version>.zip` (from the GitHub release, or `packaging/web/package.sh`) holds a
+static site in `photoz-web-<version>/`:
 
 | File | What it is |
 |---|---|
 | `index.html` | The page. It loads everything through relative URLs. |
-| `photocraft-web-<hash>.js` | wasm-bindgen glue (generated, ES module) |
-| `photocraft-web-<hash>_bg.wasm` | The app: about 23 MiB raw, 10.5 MiB with gzip (see [Sizes](#sizes)) |
+| `photoz-web-<hash>.js` | wasm-bindgen glue (generated, ES module) |
+| `photoz-web-<hash>_bg.wasm` | The app: about 23 MiB raw, 10.5 MiB with gzip (see [Sizes](#sizes)) |
 | `_headers`, `.htaccess` | Sample header rules for Netlify/Cloudflare Pages and Apache |
 | `fonts/` (optional) | Fonts loaded on demand, listed in `fonts/manifest.txt` (see [Fonts](#fonts)) |
 
@@ -22,9 +22,9 @@ There is no server-side code. Upload the folder's contents anywhere that serves 
 From the repository root (Docker is the only build prerequisite):
 
 ```sh
-docker build --load -t photocraft-web:local .
-docker run -d --name photocraft-web --restart unless-stopped \
-  -p 8080:8080 photocraft-web:local
+docker build --load -t photoz-web:local .
+docker run -d --name photoz-web --restart unless-stopped \
+  -p 8080:8080 photoz-web:local
 ```
 
 Open **http://localhost:8080/**. The multi-stage `Dockerfile` builds the existing Rust/Wasm
@@ -40,7 +40,7 @@ the default Rust version is the stable release CI used when the `Dockerfile` was
 (CI and releases always use the latest stable), and Trunk is pinned to the release workflow's
 `TRUNK_VERSION`. `RUST_VERSION`, `TRUNK_VERSION`, and `NGINX_VERSION` can be overridden with
 `--build-arg`. To stamp the About dialog with the commit and date instead of "dev build", pass
-`--build-arg PHOTOCRAFT_BUILD_SHA=$(git rev-parse HEAD) --build-arg PHOTOCRAFT_BUILD_DATE=$(date -u +%F)`.
+`--build-arg PHOTOZ_BUILD_SHA=$(git rev-parse HEAD) --build-arg PHOTOZ_BUILD_DATE=$(date -u +%F)`.
 The web build does not embed the optional `craft-fonts` checkout.
 
 The Docker build uses thin LTO and one Cargo build job to reduce peak memory, while keeping
@@ -53,13 +53,13 @@ a builder with more memory, pass `--build-arg CARGO_PROFILE_WASM_RELEASE_LTO=fat
 For a public deployment, put an HTTPS reverse proxy or your hosting platform's TLS endpoint
 in front of container port 8080. With a reverse proxy on the same host, bind only loopback
 (`-p 127.0.0.1:8080:8080`); with a proxy container, connect both through a Docker network.
-HTTPS enables WebGPU and browser clipboard APIs. If hosting under `/photocraft/`, redirect
-`/photocraft` to `/photocraft/` and strip that prefix when proxying to the container. Relative
+HTTPS enables WebGPU and browser clipboard APIs. If hosting under `/photoz/`, redirect
+`/photoz` to `/photoz/` and strip that prefix when proxying to the container. Relative
 asset URLs then work without rebuilding. For example, in an existing HTTPS NGINX server:
 
 ```nginx
-location = /photocraft { return 301 /photocraft/; }
-location /photocraft/ {
+location = /photoz { return 301 /photoz/; }
+location /photoz/ {
     proxy_pass http://127.0.0.1:8080/;
 }
 ```
@@ -78,22 +78,22 @@ Measured on 2026-10-12 (0.8.0, `packaging/web/package.sh`; gzip `-9`):
 
 | File | Raw | gzip |
 |---|---|---|
-| `photocraft-web-<hash>_bg.wasm` | 24,167,186 bytes (23.0 MiB) | 10,998,053 (10.5 MiB) |
-| `photocraft-web-<hash>.js` | about 170 KB | about 26 KB |
+| `photoz-web-<hash>_bg.wasm` | 24,167,186 bytes (23.0 MiB) | 10,998,053 (10.5 MiB) |
+| `photoz-web-<hash>.js` | about 170 KB | about 26 KB |
 
 Per-file upload limits: Cloudflare Pages and Workers static assets reject any file over
 **25 MiB** (26,214,400 bytes). The wasm fits, and `packaging/web/package.sh` fails the build if
 it ever grows past 24 MiB, so a release can't ship a file a common host refuses. (Releases up to
 0.2.0 shipped a 25.8 MiB wasm, which Cloudflare rejected; issue #198.) The size comes from the
 `wasm-release` Cargo profile (fat LTO, size-optimized code with the pixel and file-decoding
-crates kept at speed) plus `wasm-opt -Oz`, and from storing the bundled fonts (PhotoCraft's and
+crates kept at speed) plus `wasm-opt -Oz`, and from storing the bundled fonts (PhotoZ's and
 egui's) and the translation catalogs compressed, unpacked on first use.
 
 ## Any path works
 
-All URLs in `index.html` are relative (`public_url = "./"` in `apps/photocraft-web/Trunk.toml`),
+All URLs in `index.html` are relative (`public_url = "./"` in `apps/photoz-web/Trunk.toml`),
 so the site works at a domain root (`https://example.com/`), under a prefix
-(`https://example.com/tools/photocraft/`) and from a CDN bucket. The asset names carry a content
+(`https://example.com/tools/photoz/`) and from a CDN bucket. The asset names carry a content
 hash, so they can be cached forever. Only `index.html` needs revalidation.
 
 ## Required server settings
@@ -108,7 +108,7 @@ hash, so they can be cached forever. Only `index.html` needs revalidation.
   `.js` files, and `no-cache` on `index.html`.
 - **HTTPS:** WebGPU (and the clipboard) only work in a secure context, which means `https://`
   or `http://localhost`. Over plain HTTP elsewhere, the app falls back to WebGL2.
-- **No special isolation headers:** PhotoCraft doesn't use `SharedArrayBuffer`, so it doesn't
+- **No special isolation headers:** PhotoZ doesn't use `SharedArrayBuffer`, so it doesn't
   need `Cross-Origin-Opener-Policy` or `Cross-Origin-Embedder-Policy`. If your site already sends
   COEP `require-corp`, also send `Cross-Origin-Resource-Policy: same-origin` (or `cross-origin`
   when the files live on a CDN) on the app's files.
@@ -116,7 +116,7 @@ hash, so they can be cached forever. Only `index.html` needs revalidation.
 nginx example:
 
 ```nginx
-location /photocraft/ {
+location /photoz/ {
     types { application/wasm wasm; text/javascript js; text/html html; }
     gzip on;
     gzip_types application/wasm text/javascript text/html;
@@ -153,7 +153,7 @@ it is picked or a document's text needs it, so starting the app costs one small 
 3. Put each font's licence next to it; the SIL Open Font License, for one, requires that.
 
 A craft-fonts checkout is already laid out this way, and so is any folder with a
-`fonts/manifest.txt` and the files it lists: `PHOTOCRAFT_WEB_FONTS_DIR=<that folder>
+`fonts/manifest.txt` and the files it lists: `PHOTOZ_WEB_FONTS_DIR=<that folder>
 packaging/web/package.sh` copies the manifest, the fonts and their licences into the zip, keeping
 their paths. Without `fonts/manifest.txt` (a 404) nothing changes.
 
@@ -166,8 +166,8 @@ fetches them with `fetch()`, so a Content Security Policy needs them allowed by 
 
 ```html
 <iframe
-  src="https://example.com/photocraft/"
-  title="PhotoCraft image editor"
+  src="https://example.com/photoz/"
+  title="PhotoZ image editor"
   style="width: 100%; height: 720px; border: 0;"
   allow="fullscreen; clipboard-read; clipboard-write"
   allowfullscreen>
@@ -187,7 +187,7 @@ fetches them with `fetch()`, so a Content Security Policy needs them allowed by 
 
 ## Renderer selection and fallback flags
 
-PhotoCraft renders with wgpu. It uses **WebGPU** when the browser has it and falls back to
+PhotoZ renders with wgpu. It uses **WebGPU** when the browser has it and falls back to
 **WebGL2** on its own. URL query flags override this, and they work on the iframe `src` too:
 
 | Flag | Effect |
@@ -196,6 +196,6 @@ PhotoCraft renders with wgpu. It uses **WebGPU** when the browser has it and fal
 | `?webgl` | Force the WebGL2 backend (useful when a WebGPU driver misbehaves) |
 | `?cpu` | Force the CPU canvas path (slowest, most compatible) |
 
-For example: `<iframe src="https://example.com/photocraft/?webgl" ...>`.
+For example: `<iframe src="https://example.com/photoz/?webgl" ...>`.
 
 A browser with neither WebGPU nor WebGL2 gets a message in place of the app.

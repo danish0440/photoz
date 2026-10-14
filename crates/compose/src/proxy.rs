@@ -4,9 +4,9 @@
 //! channel thumbnails, histograms, file previews), where a full-resolution composite of a 200 MP
 //! document would cost seconds and gigabytes.
 
-use photocraft_doc::{Document, Layer, LayerContent, Size};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use photoz_doc::{Document, Layer, LayerContent, Size};
+use photoz_geom::Rect;
+use photoz_raster::Surface;
 
 /// Nearest-neighbour downsample of a surface by integer factor `k` (document coordinates / k).
 pub fn downsample(s: &Surface, k: u32) -> Surface {
@@ -99,9 +99,9 @@ pub fn proxy_faithful(doc: &Document) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_color::{Color, ColorMode, PixelFormat, SampleType};
-    use photocraft_doc::vector::{Knot, Path, Subpath, VectorMask};
-    use photocraft_doc::{Effect, Fill, GradientStyle, LayerMask};
+    use photoz_color::{Color, ColorMode, PixelFormat, SampleType};
+    use photoz_doc::vector::{Knot, Path, Subpath, VectorMask};
+    use photoz_doc::{Effect, Fill, GradientStyle, LayerMask};
 
     fn two_colors(size: Size, depth: SampleType) -> Document {
         let mut doc = Document::new("mask", size, ColorMode::Rgb, depth);
@@ -184,7 +184,7 @@ mod tests {
             let mut doc = Document::new("mask", Size::new(16, 12), ColorMode::Rgb, depth);
             let mut surface = Surface::new(PixelFormat::new(ColorMode::Grayscale, depth, false));
             surface.fill_rect(Rect::new(0, 0, 8, 12), &[1.0]);
-            let mut mask = photocraft_doc::AlphaChannel::new("Quick Mask", surface);
+            let mut mask = photoz_doc::AlphaChannel::new("Quick Mask", surface);
             mask.opacity = 0.25;
             doc.quick_mask = Some(mask);
             for k in [1, 2, 4] {

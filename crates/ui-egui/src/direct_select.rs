@@ -16,19 +16,19 @@
 //!   segments) and the Pen carries on drawing from its last anchor once ⌘/Ctrl is let go; a
 //!   ⌘/Ctrl-press anywhere else ends it, as in Photoshop (#4022).
 //!
-//! A drag previews with `photocraft_vector::edit` and commits once on release through the engine
+//! A drag previews with `photoz_vector::edit` and commits once on release through the engine
 //! (`path.moveAnchors`, `path.moveHandle`, `path.bendSegment`, `path.convertPoint`): one history
 //! step per drag, and the same commands drive it over MCP and the control channel. The Pen path
 //! being drawn is not in the document yet: its edits apply to it directly, without a command.
 
 use egui::{Color32, Modifiers, Pos2};
-use photocraft_doc::vector::Path;
-use photocraft_geom::Point;
-use photocraft_vector::edit::{self, Handle, Hit};
+use photoz_doc::vector::Path;
+use photoz_geom::Point;
+use photoz_vector::edit::{self, Handle, Hit};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PhotozApp;
 use crate::canvas::ToolEvent;
 use crate::state::Tool;
 
@@ -137,7 +137,7 @@ fn owns(tool: Tool) -> bool {
 
 /// Does the canvas draw Direct Selection's overlay instead of the plain path outlines? The Add /
 /// Delete Anchor Point tools show it too: they edit the same paths.
-pub fn shows(app: &PhotocraftApp, mods: Modifiers) -> bool {
+pub fn shows(app: &PhotozApp, mods: Modifiers) -> bool {
     direct(app.ui.tool, mods)
         || app.ui.direct_selection.drag.is_some()
         || matches!(app.ui.tool, Tool::AddAnchorPoint | Tool::DeleteAnchorPoint | Tool::ConvertPoint)
@@ -145,7 +145,7 @@ pub fn shows(app: &PhotocraftApp, mods: Modifiers) -> bool {
 
 /// The active paths, front first: the targeted vector mask or the active shape layer's path, then
 /// the work path. The Pen's Auto Add/Delete edits these (`anchor_tools::pen_auto`).
-pub(crate) fn active_paths(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
+pub(crate) fn active_paths(app: &PhotozApp) -> Vec<(PathRef, Path)> {
     let layer = crate::vector_ui::targeted_vector_mask(app).or_else(|| crate::vector_ui::active_shape_path(app));
     let work = app.session.active().and_then(|st| st.doc.work_path.clone());
     layer.map(|(id, p)| (PathRef::Layer(id), p)).into_iter().chain(work.map(|p| (PathRef::Work, p))).collect()
@@ -153,7 +153,7 @@ pub(crate) fn active_paths(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
 
 /// The paths Direct Selection edits, front first: the Pen path being drawn, the active paths, then
 /// every visible shape layer.
-pub(crate) fn candidates(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
+pub(crate) fn candidates(app: &PhotozApp) -> Vec<(PathRef, Path)> {
     let pen = app.ui.pen.as_ref().filter(|p| !p.dragging && !p.knots.is_empty()).map(|p| (PathRef::Pen, crate::vector_ui::pen_path(p)));
     let mut out: Vec<_> = pen.into_iter().chain(active_paths(app)).collect();
     if let Some(st) = app.session.active() {
@@ -161,7 +161,7 @@ pub(crate) fn candidates(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
             if !l.visible || !(1..=path.len()).all(|n| st.doc.layer_at(&path[..n]).is_some_and(|a| a.visible)) {
                 continue;
             }
-            if let photocraft_doc::LayerContent::Shape(sh) = &l.content
+            if let photoz_doc::LayerContent::Shape(sh) = &l.content
                 && !out.iter().any(|(r, _)| *r == PathRef::Layer(l.id.0))
             {
                 out.push((PathRef::Layer(l.id.0), sh.path.clone()));
@@ -171,7 +171,7 @@ pub(crate) fn candidates(app: &PhotocraftApp) -> Vec<(PathRef, Path)> {
     out
 }
 
-fn retracted(k: &photocraft_doc::Knot, h: Handle) -> bool {
+fn retracted(k: &photoz_doc::Knot, h: Handle) -> bool {
     let c = if h == Handle::In { k.in_ctrl } else { k.out_ctrl };
     (c.x - k.anchor.x).abs() < 1e-9 && (c.y - k.anchor.y).abs() < 1e-9
 }
@@ -195,7 +195,7 @@ fn shown_handles(ds: &DirectSelection, path: &Path) -> Vec<([usize; 2], Handle)>
 
 /// Canvas pointer events for Direct Selection and the Pen's ⌘ / ⌥ modes; false when the event is
 /// not theirs.
-pub fn pointer(app: &mut PhotocraftApp, ev: ToolEvent, mods: Modifiers) -> bool {
+pub fn pointer(app: &mut PhotozApp, ev: ToolEvent, mods: Modifiers) -> bool {
     let tool = app.ui.tool;
     match ev {
         ToolEvent::Down { x, y, .. } => {
@@ -243,7 +243,7 @@ pub fn pointer(app: &mut PhotocraftApp, ev: ToolEvent, mods: Modifiers) -> bool 
 }
 
 /// Does a press at `p` hit the Pen path being drawn: one of its anchors, shown handles or segments?
-fn hits_pen(app: &PhotocraftApp, p: [f64; 2]) -> bool {
+fn hits_pen(app: &PhotozApp, p: [f64; 2]) -> bool {
     let tol = 6.0 / f64::from(app.point_zoom().max(0.01));
     let ds = &app.ui.direct_selection;
     candidates(app).into_iter().filter(|(r, _)| *r == PathRef::Pen).any(|(r, path)| {
@@ -254,7 +254,7 @@ fn hits_pen(app: &PhotocraftApp, p: [f64; 2]) -> bool {
 
 /// A press: pick what's under the pointer and start a drag. False lets the Pen handle a ⌥-press
 /// that hit nothing; the Convert Point tool has nothing else to do, so it keeps the press.
-fn press(app: &mut PhotocraftApp, p: [f64; 2], mods: Modifiers, convert: bool) -> bool {
+fn press(app: &mut PhotozApp, p: [f64; 2], mods: Modifiers, convert: bool) -> bool {
     let own_tool = app.ui.tool == Tool::ConvertPoint;
     let tol = 6.0 / f64::from(app.point_zoom().max(0.01));
     let ds = &app.ui.direct_selection;
@@ -328,7 +328,7 @@ fn press(app: &mut PhotocraftApp, p: [f64; 2], mods: Modifiers, convert: bool) -
 
 /// End of an edit drag: commit it as one command. A click (no movement) commits nothing, except
 /// Pen + ⌥ on an anchor, which makes it a corner. The Pen path being drawn takes the edit directly.
-fn release(app: &mut PhotocraftApp, target: PathRef, base: &Path, edit: &Edit, start: [f64; 2], end: [f64; 2]) {
+fn release(app: &mut PhotozApp, target: PathRef, base: &Path, edit: &Edit, start: [f64; 2], end: [f64; 2]) {
     let moved = (end[0] - start[0]).hypot(end[1] - start[1]) * f64::from(app.point_zoom()) >= 1.0;
     if target == PathRef::Pen {
         let edited = match edit {
@@ -360,7 +360,7 @@ fn release(app: &mut PhotocraftApp, target: PathRef, base: &Path, edit: &Edit, s
 
 /// End of a marquee: select the anchors inside it on the frontmost path that has any (⇧ adds).
 /// A click on empty canvas deselects.
-fn marquee(app: &mut PhotocraftApp, start: [f64; 2], end: [f64; 2], add: bool) {
+fn marquee(app: &mut PhotozApp, start: [f64; 2], end: [f64; 2], add: bool) {
     let rect = [start[0], start[1], end[0], end[1]];
     let hits = candidates(app).into_iter().map(|(r, path)| (r, edit::anchors_in(&path, rect))).find(|(_, a)| !a.is_empty());
     let ds = &mut app.ui.direct_selection;
@@ -385,7 +385,7 @@ fn marquee(app: &mut PhotocraftApp, start: [f64; 2], end: [f64; 2], add: bool) {
 /// Arrow keys with Direct Selection and selected anchors (#4486), as in Photoshop: nudge them
 /// 1 px (⇧ 10 px) through `path.moveAnchors`, one history step per press. Not while a drag is
 /// in progress. Returns true when a key was used.
-pub fn arrow_keys(app: &mut PhotocraftApp, ctx: &egui::Context) -> bool {
+pub fn arrow_keys(app: &mut PhotozApp, ctx: &egui::Context) -> bool {
     let ds = &app.ui.direct_selection;
     let Some(target) = ds.target.filter(|_| app.ui.tool == Tool::DirectSelection && !ds.anchors.is_empty() && ds.drag.is_none()) else {
         return false;
@@ -416,7 +416,7 @@ pub fn arrow_keys(app: &mut PhotocraftApp, ctx: &egui::Context) -> bool {
 /// Paths with their anchors (selected ones filled), the shown handles, the drag's preview in
 /// place of its path, and the marquee. `paths` false (View › Show › Target Path off) leaves only
 /// the marquee.
-pub fn draw_overlay(app: &PhotocraftApp, painter: &egui::Painter, to_scr: &dyn Fn([f64; 2]) -> Pos2, accent: Color32, paths: bool) {
+pub fn draw_overlay(app: &PhotozApp, painter: &egui::Painter, to_scr: &dyn Fn([f64; 2]) -> Pos2, accent: Color32, paths: bool) {
     let ds = &app.ui.direct_selection;
     for (r, path) in if paths { candidates(app) } else { Vec::new() } {
         let path = match &ds.drag {

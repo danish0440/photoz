@@ -8,13 +8,13 @@
 //! recomposited per frame.
 
 use egui::{Color32, TextureOptions};
-use photocraft_doc::{AlphaChannel, ColorMode, Document};
-use photocraft_engine::channel_cmds::{ChannelView, color_count};
-use photocraft_engine::mask_view_cmds::MaskViewMode;
-use photocraft_geom::Rect;
-use photocraft_raster::{Surface, from_rgba, to_rgba};
+use photoz_doc::{AlphaChannel, ColorMode, Document};
+use photoz_engine::channel_cmds::{ChannelView, color_count};
+use photoz_engine::mask_view_cmds::MaskViewMode;
+use photoz_geom::Rect;
+use photoz_raster::{Surface, from_rgba, to_rgba};
 
-use crate::PhotocraftApp;
+use crate::PhotozApp;
 
 /// Largest overlay texture side; bigger documents show a downsampled overlay.
 const MAX_SIDE: u32 = 4096;
@@ -71,7 +71,7 @@ fn composite(doc: &Document, r: Rect, factor: u32) -> Vec<[f32; 4]> {
     let (w, h) = (r.width().div_ceil(factor), r.height().div_ceil(factor));
     let mut out = Vec::with_capacity((w * h) as usize);
     let f = factor as i32;
-    let _ = photocraft_compose::render_bands(doc, r, 0, |band| -> Result<(), ()> {
+    let _ = photoz_compose::render_bands(doc, r, 0, |band| -> Result<(), ()> {
         let first = band.rect.y0 + (r.y0 - band.rect.y0).rem_euclid(f);
         for y in (first..band.rect.y1).step_by(factor as usize) {
             for x in (r.x0..r.x1).step_by(factor as usize) {
@@ -88,7 +88,7 @@ fn composite(doc: &Document, r: Rect, factor: u32) -> Vec<[f32; 4]> {
 /// The channel view of `r` (document pixels, sampled every `factor` px) as premultiplied pixels,
 /// or `None` when the plain composite is all there is to show. `in_color` shows single colour
 /// channels tinted instead of grayscale (Photoshop's "Show Channels in Color").
-pub fn render(doc: &Document, v: &ChannelView, r: Rect, factor: u32, in_color: bool, active: Option<photocraft_doc::LayerId>) -> Option<Vec<Color32>> {
+pub fn render(doc: &Document, v: &ChannelView, r: Rect, factor: u32, in_color: bool, active: Option<photoz_doc::LayerId>) -> Option<Vec<Color32>> {
     let mut unused = None;
     render_with_source(doc, v, r, factor, in_color, active, CompositeSource { cached: None, fresh: &mut unused })
 }
@@ -99,7 +99,7 @@ fn render_with_source(
     r: Rect,
     factor: u32,
     in_color: bool,
-    active: Option<photocraft_doc::LayerId>,
+    active: Option<photoz_doc::LayerId>,
     source: CompositeSource<'_>,
 ) -> Option<Vec<Color32>> {
     if v.is_plain(doc) || r.is_empty() {
@@ -183,7 +183,7 @@ fn render_with_source(
         vec![[0.0; 4]; n]
     };
     // Rubylith: `color` at `opacity` × coverage over the accumulated pixels.
-    let mut tint = |values: Vec<f32>, color: photocraft_color::Color, opacity: f32, coverage: &dyn Fn(f32) -> f32| {
+    let mut tint = |values: Vec<f32>, color: photoz_color::Color, opacity: f32, coverage: &dyn Fn(f32) -> f32| {
         let c = color.to_rgb();
         for (o, val) in out.iter_mut().zip(values) {
             let a = (coverage(val.clamp(0.0, 1.0)) * opacity).clamp(0.0, 1.0);
@@ -248,7 +248,7 @@ fn view_key(v: &ChannelView, in_color: bool) -> u64 {
 }
 
 /// Make the channel-view texture of document `idx` current; `None` = nothing to draw.
-pub fn ensure(app: &mut PhotocraftApp, ctx: &egui::Context, idx: usize) -> Option<egui::TextureId> {
+pub fn ensure(app: &mut PhotozApp, ctx: &egui::Context, idx: usize) -> Option<egui::TextureId> {
     let st = app.session.documents().get(idx)?;
     let view = st.channel_view.clone();
     let active = st.active_layer;
@@ -352,8 +352,8 @@ pub fn ensure(app: &mut PhotocraftApp, ctx: &egui::Context, idx: usize) -> Optio
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_engine::Session;
-    use photocraft_engine::channel_cmds::ChannelTarget;
+    use photoz_engine::Session;
+    use photoz_engine::channel_cmds::ChannelTarget;
     use serde_json::json;
 
     fn session() -> Session {
@@ -369,7 +369,7 @@ mod tests {
         s.execute("edit.fill", json!({"color": "#398db2"})).unwrap();
         let doc = &s.active().unwrap().doc;
         let rect = doc.bounds();
-        let full = photocraft_compose::render(doc, rect);
+        let full = photoz_compose::render(doc, rect);
         let full_ref = &full;
         for factor in [1, 2, 3, 5] {
             let expected: Vec<_> = (0..rect.height())
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn channel_eyes_reuse_composite_until_pixels_change() {
-        let mut app = PhotocraftApp::new(Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 32})).unwrap();
         app.run("edit.fill", json!({"color": "#4080c0"})).unwrap();
         app.sync_views();
@@ -513,7 +513,7 @@ mod tests {
         assert!(px[36].a() <= 4, "next to nothing over the revealed end: {:?}", px[36]);
     }
 
-    /// `cargo test --release -p photocraft-ui-egui --lib mask_view_switch_24mp -- --ignored --nocapture`
+    /// `cargo test --release -p photoz-ui-egui --lib mask_view_switch_24mp -- --ignored --nocapture`
     #[test]
     #[ignore = "benchmark"]
     fn mask_view_switch_24mp() {
@@ -584,7 +584,7 @@ mod tests {
     /// The canvas texture cache is keyed by the preference, so toggling it rebuilds the view.
     #[test]
     fn ensure_honours_show_channels_in_color() {
-        let mut app = PhotocraftApp::new(Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
         app.sync_views();
         app.run("channel.target", json!({"channel": "green"})).unwrap();

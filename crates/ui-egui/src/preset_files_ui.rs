@@ -8,7 +8,7 @@
 
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::PhotozApp;
 
 /// Extensions handled here rather than by the document importer (`.aco`/`.ase` swatches go to
 /// the Swatches panel through [`crate::swatches_ui::import_bytes`]).
@@ -26,7 +26,7 @@ pub fn is_preset_file(name: &str) -> bool {
 }
 
 /// Import from a gradient picker through the same preset command as File › Open.
-pub(crate) fn import_gradients_dialog(app: &mut PhotocraftApp) {
+pub(crate) fn import_gradients_dialog(app: &mut PhotozApp) {
     let result = app.pick_file_bytes_filtered(&["grd"], |app, name, bytes| {
         if ext(&name) != "grd" {
             return Err(tl!("Choose a gradient file (.grd).").into());
@@ -49,11 +49,11 @@ fn source(name: &str, bytes: &[u8]) -> Value {
         return json!({"path": name});
     }
     let _ = name;
-    json!({"data": photocraft_engine::paint::tile::b64_encode(bytes)})
+    json!({"data": photoz_engine::paint::tile::b64_encode(bytes)})
 }
 
 /// Import a preset file; `None` when `name` isn't one.
-pub fn open(app: &mut PhotocraftApp, name: &str, bytes: &[u8]) -> Option<Result<(), String>> {
+pub fn open(app: &mut PhotozApp, name: &str, bytes: &[u8]) -> Option<Result<(), String>> {
     let (cmd, what) = match ext(name).as_str() {
         "abr" => ("brush.presets.importAbr", "brushes"),
         "grd" => ("gradient.presets.importGrd", "gradients"),

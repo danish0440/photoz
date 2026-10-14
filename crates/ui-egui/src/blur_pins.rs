@@ -12,7 +12,7 @@
 use egui::{Color32, Pos2, Stroke, vec2};
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PhotozApp;
 use crate::canvas::ViewXform;
 
 pub const COMMAND: &str = "filter.blurGallery.fieldBlur";
@@ -34,7 +34,7 @@ pub fn owns(fields: &Map<String, Value>) -> bool {
 
 /// Turn a freshly opened Field Blur dialog into the workspace: one pin in the middle of the
 /// filter's bounds with the remembered blur, selected.
-pub fn init(app: &mut PhotocraftApp, fields: &mut Map<String, Value>) {
+pub fn init(app: &mut PhotozApp, fields: &mut Map<String, Value>) {
     reset(fields);
     let bounds = app.session.active().map(|st| (st.doc.id, st.doc.bounds(), st.doc.selection.clone()));
     if let Some((doc, canvas, selection)) = bounds {
@@ -197,7 +197,7 @@ fn grab(fields: &Map<String, Value>, xf: &ViewXform, at: Pos2) -> Grab {
 /// The pointer on the free image under the dialog: `over` is where it is, `press` where the
 /// primary button is held (`dialogs::free_press`), both in screen points. Returns whether the
 /// workspace took it.
-pub fn canvas(app: &mut PhotocraftApp, ctx: &egui::Context, xf: &ViewXform, over: Pos2, press: Option<Pos2>) -> bool {
+pub fn canvas(app: &mut PhotozApp, ctx: &egui::Context, xf: &ViewXform, over: Pos2, press: Option<Pos2>) -> bool {
     let Some(d) = app.ui.dialogs.last_mut().filter(|d| owns(&d.fields)) else { return false };
     let f = &mut d.fields;
     let Some(b) = bounds(f) else { return false };
@@ -266,7 +266,7 @@ pub fn canvas(app: &mut PhotocraftApp, ctx: &egui::Context, xf: &ViewXform, over
 
 /// Draw the pins over the image while the workspace is open: a dot per pin (filled when
 /// selected) and, round the selected one, its ring with the blur as an arc from the top.
-pub fn draw(app: &PhotocraftApp, painter: &egui::Painter, xf: &ViewXform) {
+pub fn draw(app: &PhotozApp, painter: &egui::Painter, xf: &ViewXform) {
     let Some(d) = app.ui.dialogs.last().filter(|d| owns(&d.fields)) else { return };
     let Some(b) = bounds(&d.fields) else { return };
     let sel = selected(&d.fields);

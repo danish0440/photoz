@@ -1,14 +1,14 @@
 //! Destructive pixel operations on layers (Image → Adjustments, flips, fills).
 
-use photocraft_compose::{Buffer, adjust};
-use photocraft_doc::{Adjustment, Document, Layer, LayerContent};
-use photocraft_geom::{Rect, TILE_SIZE};
-use photocraft_raster::{Surface, to_rgba};
+use photoz_compose::{Buffer, adjust};
+use photoz_doc::{Adjustment, Document, Layer, LayerContent};
+use photoz_geom::{Rect, TILE_SIZE};
+use photoz_raster::{Surface, to_rgba};
 
 /// Composite `layers` inside their visible composite bounds (effects included) and write the result directly into a
 /// tiled surface. Large merges used to hold both a full-canvas RGBA buffer and a second converted
 /// float buffer at once; banded rendering keeps only one compositor band plus the destination.
-pub fn composite_layers(solo: &Document, format: photocraft_color::PixelFormat, background: Option<[f32; 3]>) -> Surface {
+pub fn composite_layers(solo: &Document, format: photoz_color::PixelFormat, background: Option<[f32; 3]>) -> Surface {
     let canvas = solo.bounds();
     let area = solo
         .layers
@@ -16,7 +16,7 @@ pub fn composite_layers(solo: &Document, format: photocraft_color::PixelFormat, 
         .filter(|layer| layer.visible)
         // Composite bounds include layer effects (a drop shadow reaches past the pixels); `None`
         // means the layer may draw anywhere.
-        .map(|layer| photocraft_compose::composite_bounds(layer, canvas).unwrap_or(canvas))
+        .map(|layer| photoz_compose::composite_bounds(layer, canvas).unwrap_or(canvas))
         .filter(|bounds| !bounds.is_empty())
         .reduce(|a, b| a.union(&b))
         .unwrap_or(Rect::EMPTY)
@@ -25,7 +25,7 @@ pub fn composite_layers(solo: &Document, format: photocraft_color::PixelFormat, 
         return Surface::new(format);
     }
     // Also keeps a plain CMYK stack in its ink values (#3778).
-    photocraft_compose::composite_to_surface(solo, area, format, background)
+    photoz_compose::composite_to_surface(solo, area, format, background)
 }
 
 /// Apply an adjustment destructively to a surface, weighted by an optional selection.
@@ -33,7 +33,7 @@ pub fn composite_layers(solo: &Document, format: photocraft_color::PixelFormat, 
 /// selection; `mode` is the document's, for the tone transfer (e.g. Exposure in Grayscale).
 /// Works tile by tile in parallel, so a large layer needs one tile's buffers per thread rather
 /// than four full-layer copies, and the result is the same as one pass over the whole region.
-pub fn adjust_surface(s: &mut Surface, adj: &Adjustment, selection: Option<&Surface>, mode: photocraft_color::ColorMode) {
+pub fn adjust_surface(s: &mut Surface, adj: &Adjustment, selection: Option<&Surface>, mode: photoz_color::ColorMode) {
     use rayon::prelude::*;
     let r = s.content_bounds();
     if r.is_empty() {
@@ -67,7 +67,7 @@ mod tests;
 /// the mask's default value), and without a selection the default changes too, since a mask
 /// reaches past the canvas: Invert turns a reveal-all mask into a hide-all one (#780).
 pub fn adjust_mask(s: &mut Surface, adj: &Adjustment, selection: Option<&Surface>) {
-    let mode = photocraft_color::ColorMode::Grayscale;
+    let mode = photoz_color::ColorMode::Grayscale;
     if let Some(sel) = selection {
         let r = sel.content_bounds();
         if !r.is_empty() {
@@ -89,9 +89,9 @@ pub fn adjust_mask(s: &mut Surface, adj: &Adjustment, selection: Option<&Surface
 }
 
 /// `s`'s pixels over `r` (untouched ones included) with `adj` applied through the selection, encoded.
-fn adjusted(s: &Surface, r: Rect, adj: &Adjustment, selection: Option<&Surface>, mode: photocraft_color::ColorMode) -> Vec<f32> {
+fn adjusted(s: &Surface, r: Rect, adj: &Adjustment, selection: Option<&Surface>, mode: photoz_color::ColorMode) -> Vec<f32> {
     let fmt = s.format();
-    if fmt.mode == mode && matches!(mode, photocraft_color::ColorMode::Lab | photocraft_color::ColorMode::Cmyk) && adjust::stored_channel_adjustment(adj) {
+    if fmt.mode == mode && matches!(mode, photoz_color::ColorMode::Lab | photoz_color::ColorMode::Cmyk) && adjust::stored_channel_adjustment(adj) {
         return adjusted_channels(s, r, adj, selection);
     }
     let n = fmt.channels();
@@ -100,7 +100,7 @@ fn adjusted(s: &Surface, r: Rect, adj: &Adjustment, selection: Option<&Surface>,
     let orig = buf.clone();
     // 32-bit documents get the float behaviour of an adjustment layer there (Levels doesn't clip);
     // integer depths keep the unrounded, clipped curves.
-    let depth = (fmt.sample == photocraft_color::SampleType::F32).then_some(fmt.sample);
+    let depth = (fmt.sample == photoz_color::SampleType::F32).then_some(fmt.sample);
     adjust::apply_in(adj, &mut buf, adjust::Transfer::for_document(mode, fmt.sample), depth, mode);
     mix_through_selection(&fmt, r, &orig.px, &buf.px, selection)
 }
@@ -123,7 +123,7 @@ fn adjusted_channels(s: &Surface, r: Rect, adj: &Adjustment, selection: Option<&
                 continue;
             }
             let p = to_rgba(&fmt, px);
-            let gray = photocraft_color::convert::rgb_to_gray([p[0], p[1], p[2]]);
+            let gray = photoz_color::convert::rgb_to_gray([p[0], p[1], p[2]]);
             let Some(ch) = px.get_mut(..colors) else { continue };
             let mut out = [0.0f32; 4];
             let Some(out) = out.get_mut(..colors) else { continue };
@@ -140,7 +140,7 @@ fn adjusted_channels(s: &Surface, r: Rect, adj: &Adjustment, selection: Option<&
 /// `edited` mixed back over `orig` (straight RGBA over `r`, row-major) by the selection's
 /// coverage, encoded in `fmt`: what a destructive edit writes back through a selection.
 pub(crate) fn mix_through_selection(
-    fmt: &photocraft_color::PixelFormat,
+    fmt: &photoz_color::PixelFormat,
     r: Rect,
     orig: &[[f32; 4]],
     edited: &[[f32; 4]],
@@ -158,7 +158,7 @@ pub(crate) fn mix_through_selection(
         for ((a, o), k) in edited_row.iter().zip(orig_row).zip(&coverage) {
             let mixed: [f32; 4] = std::array::from_fn(|c| o[c] + (a[c] - o[c]) * k);
             let mut enc = [0.0f32; 8];
-            let m = photocraft_raster::from_rgba_into(fmt, mixed, &mut enc);
+            let m = photoz_raster::from_rgba_into(fmt, mixed, &mut enc);
             out.extend_from_slice(&enc[..m]);
         }
     }
@@ -171,10 +171,10 @@ pub(crate) fn mix_through_selection(
 pub(crate) fn try_fill_surface(s: &mut Surface, area: Rect, color: [f32; 4], selection: Option<&Surface>, lock_transparency: bool) -> crate::Result<()> {
     let fmt = s.format();
     // Coverage 1 of an opaque colour replaces the colour (and the alpha, unless it is kept).
-    let opaque = color[3] == 1.0 && (!lock_transparency || !fmt.alpha) && selection.is_none_or(|m| m.format().sample != photocraft_color::SampleType::F32);
+    let opaque = color[3] == 1.0 && (!lock_transparency || !fmt.alpha) && selection.is_none_or(|m| m.format().sample != photoz_color::SampleType::F32);
     let solid = opaque.then(|| {
         let mut enc = [0.0f32; 8];
-        let n = photocraft_raster::from_rgba_into(&fmt, [color[0], color[1], color[2], 1.0], &mut enc);
+        let n = photoz_raster::from_rgba_into(&fmt, [color[0], color[1], color[2], 1.0], &mut enc);
         s.solid_tile(enc.get(..n).unwrap_or(&[]))
     });
     let whole = |full: bool| solid.as_ref().filter(|_| full).map(|t| TileEdit::Put(t.clone()));
@@ -188,7 +188,7 @@ pub(crate) fn try_fill_surface(s: &mut Surface, area: Rect, color: [f32; 4], sel
 }
 
 /// One pixel of [`try_fill_surface`]: `color` over `px` (encoded) at coverage `k`.
-fn fill_pixel(fmt: &photocraft_color::PixelFormat, px: &mut [f32], color: [f32; 4], k: f32, lock_transparency: bool) {
+fn fill_pixel(fmt: &photoz_color::PixelFormat, px: &mut [f32], color: [f32; 4], k: f32, lock_transparency: bool) {
     let d = to_rgba(fmt, px);
     let sa = color[3] * k;
     let oa = sa + d[3] * (1.0 - sa);
@@ -200,7 +200,7 @@ fn fill_pixel(fmt: &photocraft_color::PixelFormat, px: &mut [f32], color: [f32; 
     }
     o[3] = if lock_transparency { d[3] } else { oa };
     let mut enc = [0.0f32; 8];
-    let m = photocraft_raster::from_rgba_into(fmt, o, &mut enc);
+    let m = photoz_raster::from_rgba_into(fmt, o, &mut enc);
     let n = px.len().min(m);
     if let (Some(dst), Some(src)) = (px.get_mut(..n), enc.get(..n)) {
         dst.copy_from_slice(src);
@@ -235,7 +235,7 @@ pub(crate) fn try_clear_surface(s: &mut Surface, area: Rect, selection: Option<&
 /// A whole-tile shortcut of [`edit_tiles`].
 enum TileEdit {
     /// Replace the tile with this (shared) one.
-    Put(std::sync::Arc<photocraft_raster::Tile>),
+    Put(std::sync::Arc<photoz_raster::Tile>),
     /// Remove the tile (it reads as the default pixel again).
     Drop,
 }
@@ -254,7 +254,7 @@ fn edit_tiles(
     whole: impl Fn(bool) -> Option<TileEdit> + Sync,
     pixel: impl Fn(f32, &mut [f32]) -> bool + Sync,
 ) -> crate::Result<()> {
-    use photocraft_raster::Tile;
+    use photoz_raster::Tile;
     use rayon::prelude::*;
     use std::sync::Arc;
     let fmt = s.format();
@@ -267,7 +267,7 @@ fn edit_tiles(
     let surf = &*s;
     let edits = coords
         .into_par_iter()
-        .map(|tc| -> crate::Result<Option<(photocraft_geom::TileCoord, Option<Arc<Tile>>)>> {
+        .map(|tc| -> crate::Result<Option<(photoz_geom::TileCoord, Option<Arc<Tile>>)>> {
             let tr = tc.rect().intersect(&area);
             let mask = selection.map(|m| crate::fill_cmds::Mask::of(m, tc));
             let full = tr == tc.rect() && mask.as_ref().is_none_or(|m| m.full(tr));
@@ -287,12 +287,12 @@ fn edit_tiles(
                     let i = (row + (x - tc.tx * TILE_SIZE) as usize) * bpp;
                     let Some(old) = src.bytes().get(i..i + bpp) else { continue };
                     for (c, v) in px.iter_mut().enumerate() {
-                        *v = photocraft_color::read_sample(old, fmt.sample, c);
+                        *v = photoz_color::read_sample(old, fmt.sample, c);
                     }
                     if !pixel(mask.as_ref().map_or(1.0, |m| m.at(x, y)), px) {
                         continue;
                     }
-                    photocraft_raster::encode_pixel(&fmt, px, enc);
+                    photoz_raster::encode_pixel(&fmt, px, enc);
                     if enc == old {
                         continue;
                     }

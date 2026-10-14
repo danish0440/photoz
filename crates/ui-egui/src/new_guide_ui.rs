@@ -14,11 +14,11 @@
 //! Color Picker. The guide stores the chosen colour itself, so changing the preference guide
 //! colour later doesn't recolour it.
 
-use photocraft_engine::edit_cmds::GUIDE_COLORS;
-use photocraft_engine::prefs::Unit;
+use photoz_engine::edit_cmds::GUIDE_COLORS;
+use photoz_engine::prefs::Unit;
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PhotozApp;
 use crate::state::DialogKind;
 
 const MARK: &str = "__newGuide";
@@ -51,7 +51,7 @@ fn is_color_name(name: &str) -> bool {
 fn custom_color(f: &Map<String, Value>) -> String {
     f.get("customColor")
         .and_then(Value::as_str)
-        .filter(|h| photocraft_engine::prefs::parse_hex(h).is_some())
+        .filter(|h| photoz_engine::prefs::parse_hex(h).is_some())
         .map_or_else(|| "#4affff".to_string(), str::to_string)
 }
 
@@ -59,7 +59,7 @@ pub fn owns(fields: &Map<String, Value>) -> bool {
     fields.contains_key(MARK)
 }
 
-fn ruler_unit(app: &PhotocraftApp) -> Unit {
+fn ruler_unit(app: &PhotozApp) -> Unit {
     app.session.prefs().units_and_rulers.rulers
 }
 
@@ -71,7 +71,7 @@ fn with_unit(value: &str, unit: Unit) -> String {
 
 /// `px` (document pixels) in the ruler unit, as the field shows it: "14.11 cm". Percent is of the
 /// active document's width for a vertical guide and its height for a horizontal one.
-fn in_ruler_unit(app: &PhotocraftApp, px: f64, vertical: bool) -> String {
+fn in_ruler_unit(app: &PhotozApp, px: f64, vertical: bool) -> String {
     let units = &app.session.prefs().units_and_rulers;
     let (dpi, extent) = app.session.active().map_or((72.0, 1.0), |st| {
         let d = &st.doc;
@@ -82,7 +82,7 @@ fn in_ruler_unit(app: &PhotocraftApp, px: f64, vertical: bool) -> String {
 
 /// Open the dialog with the last successful guide's orientation, position (in the current ruler
 /// unit) and colour, else horizontal at 0.
-pub fn open(app: &mut PhotocraftApp) -> u64 {
+pub fn open(app: &mut PhotozApp) -> u64 {
     let saved = app.session.prefs().dialogs.get(COMMAND).and_then(Value::as_object).cloned().unwrap_or_default();
     let orientation = saved.get("orientation").and_then(Value::as_str).filter(|o| matches!(*o, "horizontal" | "vertical")).unwrap_or("horizontal");
     let px = saved.get("positionPx").and_then(Value::as_f64).filter(|p| p.is_finite()).unwrap_or(0.0);
@@ -126,7 +126,7 @@ pub fn body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
             crate::widgets::dropdown(ui, "new-guide-color", &mut color, &options, 140.0);
             if color == CUSTOM {
                 let hex = custom_color(f);
-                let rgb = photocraft_engine::prefs::parse_hex(&hex).unwrap_or([0x4a, 0xff, 0xff]);
+                let rgb = photoz_engine::prefs::parse_hex(&hex).unwrap_or([0x4a, 0xff, 0xff]);
                 if crate::widgets::color_swatch_button(ui, egui::Color32::from_rgb(rgb[0], rgb[1], rgb[2]), tl!("Custom…")).clicked() {
                     f.insert("customColor".into(), json!(hex));
                     crate::color_picker_ui::request_field(f, "customColor", &crate::color_picker_ui::title_for(tl!("Guides")));
@@ -143,7 +143,7 @@ pub fn body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
 
 /// The command's parameters: a bare number gets the ruler unit; anything else goes as typed, for
 /// the engine to read (or refuse, keeping the dialog open). Custom… sends its "#rrggbb".
-pub fn params(app: &PhotocraftApp, f: &Map<String, Value>) -> Value {
+pub fn params(app: &PhotozApp, f: &Map<String, Value>) -> Value {
     let orientation = f.get("orientation").and_then(Value::as_str).unwrap_or("horizontal");
     let typed = f.get("position").and_then(Value::as_str).unwrap_or_default().trim();
     let position = match Unit::parse_length(typed) {
@@ -155,7 +155,7 @@ pub fn params(app: &PhotocraftApp, f: &Map<String, Value>) -> Value {
     json!({"orientation": orientation, "position": position, "color": color})
 }
 
-pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value, String> {
+pub fn confirm(app: &mut PhotozApp, f: &Map<String, Value>) -> Result<Value, String> {
     let params = params(app, f);
     match app.run(COMMAND, params.clone()) {
         Ok(result) => {

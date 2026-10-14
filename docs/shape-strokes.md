@@ -2,7 +2,7 @@
 
 Updated 2026-10-11: direct editing, compact layout, and clickable colour/style controls.
 
-PhotoCraft's Shape tool options bar has a Stroke Options button beside the existing width
+PhotoZ's Shape tool options bar has a Stroke Options button beside the existing width
 and colour controls. It sets defaults for new Rectangle, Ellipse, Triangle, Polygon, Line
 and Custom Shape layers. Pen in Shape mode uses the same style defaults; open Pen shapes retain
 their existing foreground colour and minimum 1 px width. To edit an existing shape,
@@ -76,23 +76,23 @@ fields, colour pickers, and ComboBoxes remain native egui controls.
 
 ## Upstream and public references
 
-- [PR #2218](https://github.com/storytold/photocraft/pull/2218) introduced these controls with
+- [PR #2218](https://github.com/danish0440/photoz/pull/2218) introduced these controls with
   staged previews. The direct-edit interaction above replaces that Apply/Cancel workflow.
-- [Issue #2496](https://github.com/storytold/photocraft/issues/2496) tracks broader Shape tool
+- [Issue #2496](https://github.com/danish0440/photoz/issues/2496) tracks broader Shape tool
   parity, including selected-shape editing from the options bar and additional fill types;
   those remain separate work.
-- [Issue #1053](https://github.com/storytold/photocraft/issues/1053) documents the missing
+- [Issue #1053](https://github.com/danish0440/photoz/issues/1053) documents the missing
   stroke controls and existing engine/model support. Gradient fill UI remains separate work.
-- [Issue #1931](https://github.com/storytold/photocraft/issues/1931) requests sharp stroke options.
-- [PR #233](https://github.com/storytold/photocraft/pull/233),
-  [#397](https://github.com/storytold/photocraft/pull/397), and
-  [#1495](https://github.com/storytold/photocraft/pull/1495) already address stroke compositing,
+- [Issue #1931](https://github.com/danish0440/photoz/issues/1931) requests sharp stroke options.
+- [PR #233](https://github.com/danish0440/photoz/pull/233),
+  [#397](https://github.com/danish0440/photoz/pull/397), and
+  [#1495](https://github.com/danish0440/photoz/pull/1495) already address stroke compositing,
   hairlines, and depth preservation; their implementations are reused.
-- [PR #2031](https://github.com/storytold/photocraft/pull/2031) supplies the click-to-create
+- [PR #2031](https://github.com/danish0440/photoz/pull/2031) supplies the click-to-create
   dialogs. Both dialogs and drag creation use its shared `create_shape` helper, which receives
   the complete stroke defaults. A gesture regression checks both paths and their undo steps.
 - Adobe's [Photoshop shape fill/stroke guide](https://helpx.adobe.com/photoshop/desktop/draw-shapes-paths/create-shapes/fill-and-stroke-shapes.html)
   describes the tool options and Properties entry points, and its
   [cap/join reference](https://helpx.adobe.com/ca/illustrator/desktop/paint-and-fill/apply-and-edit-strokes/change-the-caps-or-joins-of-a-line.html)
   defines endpoint and corner behavior and the 1–500 miter range. Dash units reuse
-  PhotoCraft's existing documented `ShapeStroke`/`vstk` convention.
+  PhotoZ's existing documented `ShapeStroke`/`vstk` convention.

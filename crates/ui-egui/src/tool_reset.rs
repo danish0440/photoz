@@ -18,7 +18,7 @@
 
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PhotozApp;
 use crate::state::{DialogKind, Tool, ToolOptions};
 
 pub const RESET: &str = "tool.reset";
@@ -32,7 +32,7 @@ pub fn owns(fields: &Map<String, Value>) -> bool {
 }
 
 /// Run `tool.reset` / `tool.resetAll`; `None` for any other command.
-pub fn invoke(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+pub fn invoke(app: &mut PhotozApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     match id {
         RESET => {
             let tool = app.ui.tool;
@@ -61,13 +61,13 @@ pub fn body(ui: &mut egui::Ui) {
 }
 
 /// OK in the confirmation.
-pub fn confirm(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub fn confirm(app: &mut PhotozApp) -> Result<Value, String> {
     reset_all(app);
     Ok(json!({"reset": "all"}))
 }
 
 /// Reset Tool: `tool`'s options, its selection mode and its brush.
-fn reset_tool(app: &mut PhotocraftApp, tool: Tool) {
+fn reset_tool(app: &mut PhotozApp, tool: Tool) {
     reset_options(&mut app.ui.tool_options, tool);
     if is_selection_tool(tool) {
         app.ui.selection_mode = 0;
@@ -81,14 +81,14 @@ fn reset_tool(app: &mut PhotocraftApp, tool: Tool) {
 }
 
 /// Reset All Tools: every option, the selection mode and every tool's brush.
-fn reset_all(app: &mut PhotocraftApp) {
+fn reset_all(app: &mut PhotozApp) {
     app.ui.tool_options = ToolOptions::default();
     app.ui.selection_mode = 0;
     app.ui.tool_brushes.clear();
     reset_session_brush(app);
 }
 
-fn reset_session_brush(app: &mut PhotocraftApp) {
+fn reset_session_brush(app: &mut PhotozApp) {
     app.session.tools.brush = crate::paint_mouse::fresh_brush(&app.session.tools.brush);
     app.session.tools.brush_gesture = None;
     app.session.tools.current_preset = None;
@@ -195,10 +195,10 @@ pub fn reset_options(o: &mut ToolOptions, tool: Tool) {
 mod tests {
     use super::*;
 
-    fn app() -> PhotocraftApp {
-        let mut s = photocraft_engine::Session::new();
+    fn app() -> PhotozApp {
+        let mut s = photoz_engine::Session::new();
         s.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotozApp::new(s, crate::Services::default())
     }
 
     /// Reset Tool resets only the current tool's options; Reset All Tools asks, then resets all.

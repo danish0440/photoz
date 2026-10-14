@@ -3,11 +3,11 @@
 //! file listed for a chooser ([`entries`]), and the chosen ones imported as the layers of
 //! one document ([`import`]), with an optional additive beauty precomp from the AOVs.
 
-use photocraft_cms::Builtin;
-use photocraft_codecs::{self as codecs, ChannelLayout, DecodeOptions, Image, SampleType};
-use photocraft_color::{ColorMode, SampleType as DocSample};
-use photocraft_doc::{Document, Layer, LayerContent, Size};
-use photocraft_raster::Surface;
+use photoz_cms::Builtin;
+use photoz_codecs::{self as codecs, ChannelLayout, DecodeOptions, Image, SampleType};
+use photoz_color::{ColorMode, SampleType as DocSample};
+use photoz_doc::{Document, Layer, LayerContent, Size};
+use photoz_raster::Surface;
 
 use crate::{ImportResult, IoError, flat::image_surface};
 

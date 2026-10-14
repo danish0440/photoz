@@ -9,7 +9,7 @@
 
 use serde_json::{Map, Value};
 
-use crate::PhotocraftApp;
+use crate::PhotozApp;
 use crate::state::ToolOptions;
 
 /// The options that differ from the defaults, as JSON (`Null` when none do).
@@ -24,7 +24,7 @@ fn changed(o: &ToolOptions) -> Value {
 /// Remember the tool options in the preferences once the user lets go of the pointer. Cheap
 /// when nothing changed: one struct compare per frame. Run every frame, so options set by the
 /// control channel or a tool preset are remembered too.
-pub fn persist(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn persist(app: &mut PhotozApp, ctx: &egui::Context) {
     if ctx.input(|i| i.pointer.any_down()) || app.prefs_rt.tool_options.as_ref() == Some(&app.ui.tool_options) {
         return;
     }
@@ -36,7 +36,7 @@ pub fn persist(app: &mut PhotocraftApp, ctx: &egui::Context) {
 }
 
 /// Restore the remembered tool options at launch, field by field over the current ones.
-pub fn restore(app: &mut PhotocraftApp) {
+pub fn restore(app: &mut PhotozApp) {
     let saved = app.session.prefs().tool_options.clone();
     if let Some(saved) = saved.as_object()
         && let Ok(Value::Object(mut cur)) = serde_json::to_value(&app.ui.tool_options)

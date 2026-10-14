@@ -6,8 +6,8 @@
 //! the canvas, empty or holding the pixel layer it was drawn over. Headless and scriptable like
 //! every other command.
 
-use photocraft_doc::{Layer, LayerContent, LayerId, LayerMask, PixelFormat};
-use photocraft_geom::Rect;
+use photoz_doc::{Layer, LayerContent, LayerId, LayerMask, PixelFormat};
+use photoz_geom::Rect;
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -184,8 +184,8 @@ pub fn specs() -> Vec<CommandSpec> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_doc::{Layer, LayerContent};
-    use photocraft_geom::Rect;
+    use photoz_doc::{Layer, LayerContent};
+    use photoz_geom::Rect;
 
     fn session() -> (Session, LayerId, LayerId) {
         let mut s = Session::new();
@@ -194,9 +194,9 @@ mod tests {
             .edit("setup", |doc, _| {
                 let fmt = doc.pixel_format();
                 let mut a = Layer::raster("A", fmt);
-                a.surface_mut().unwrap().fill_rect(Rect::new(4, 4, 24, 24), &photocraft_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
+                a.surface_mut().unwrap().fill_rect(Rect::new(4, 4, 24, 24), &photoz_raster::from_rgba(&fmt, [1.0, 0.0, 0.0, 1.0]));
                 let mut b = Layer::raster("B", fmt);
-                b.surface_mut().unwrap().fill_rect(Rect::new(30, 20, 50, 40), &photocraft_raster::from_rgba(&fmt, [0.0, 0.0, 1.0, 1.0]));
+                b.surface_mut().unwrap().fill_rect(Rect::new(30, 20, 50, 40), &photoz_raster::from_rgba(&fmt, [0.0, 0.0, 1.0, 1.0]));
                 let (ia, ib) = (a.id, b.id);
                 doc.layers.push(a);
                 doc.layers.push(b);

@@ -1,4 +1,4 @@
-//! The Photocraft engine façade: open documents, history, and the command registry.
+//! The Photoz engine façade: open documents, history, and the command registry.
 //!
 //! Every user-visible action is a command with a stable id (Photoshop-style, such as
 //! `layer.newAdjustmentLayer.invert`) and JSON parameters. Every frontend goes through the same
@@ -129,14 +129,14 @@ mod wia_cmds;
 
 use std::sync::Arc;
 
-use photocraft_doc::{Document, LayerId};
-use photocraft_ops::{History, LayerTarget};
+use photoz_doc::{Document, LayerId};
+use photoz_ops::{History, LayerTarget};
 use serde_json::Value;
 
 pub use commands::{CommandSpec, command_specs};
-pub use photocraft_doc as doc;
-pub use photocraft_paint as paint;
-pub use photocraft_paint::BrushSettings;
+pub use photoz_doc as doc;
+pub use photoz_paint as paint;
+pub use photoz_paint::BrushSettings;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
@@ -159,21 +159,21 @@ pub enum EngineError {
 
 pub type Result<T> = std::result::Result<T, EngineError>;
 
-impl From<photocraft_raster::AllocationError> for EngineError {
-    fn from(error: photocraft_raster::AllocationError) -> Self {
+impl From<photoz_raster::AllocationError> for EngineError {
+    fn from(error: photoz_raster::AllocationError) -> Self {
         Self::Other(format!("not enough memory for this operation ({error}); the document was not changed"))
     }
 }
 
 /// The pixels of a raster layer (typically one a command just created), as an error instead
 /// of a panic if the layer has none.
-pub(crate) fn pixels_mut(l: &mut photocraft_doc::Layer) -> Result<&mut photocraft_raster::Surface> {
+pub(crate) fn pixels_mut(l: &mut photoz_doc::Layer) -> Result<&mut photoz_raster::Surface> {
     let id = l.id;
     l.surface_mut().ok_or_else(|| EngineError::Other(format!("layer {id:?} has no pixels")))
 }
 
 /// The active document's active layer, for `enabled` predicates.
-pub(crate) fn active_layer_of(s: &Session) -> std::result::Result<&photocraft_doc::Layer, String> {
+pub(crate) fn active_layer_of(s: &Session) -> std::result::Result<&photoz_doc::Layer, String> {
     let d = s.active().ok_or("no document open")?;
     d.active_layer.and_then(|id| d.doc.layer(id)).ok_or_else(|| "no active layer".into())
 }
@@ -201,7 +201,7 @@ pub struct DocState {
     /// How much of `revision` came from view-only changes (channel eyes, targeting): pixel caches can ignore those.
     pub view_revision: u64,
     /// Area changed by the latest revision (None = assume everything changed).
-    pub last_damage: Option<photocraft_geom::Rect>,
+    pub last_damage: Option<photoz_geom::Rect>,
     /// Coalescing key of the latest history step (see [`Session::execute`]'s `coalesce` param).
     pub coalesce: Option<String>,
     /// Channels panel: targeted channel and eye toggles (view state, not history).
@@ -284,17 +284,17 @@ impl DocState {
 pub struct ToolState {
     pub foreground: [f32; 4],
     pub background: [f32; 4],
-    pub brush: photocraft_paint::BrushSettings,
+    pub brush: photoz_paint::BrushSettings,
     /// Brush presets (built-ins plus user presets; see `brush.presets.*`).
-    pub presets: Vec<photocraft_paint::BrushPreset>,
+    pub presets: Vec<photoz_paint::BrushPreset>,
     /// Bumped whenever `presets` changes ([`Session::brush_presets_changed`]); the preset store
     /// syncs when it moves.
     pub presets_rev: u64,
     /// Mixer Brush paint carried between strokes.
-    pub mixer: photocraft_paint::mixer::MixerState,
+    pub mixer: photoz_paint::mixer::MixerState,
     /// The coalescing key of the running `tools.setBrush` gesture and the brush before it, so the
     /// gesture journals as one call ([`brush_cmds::coalesce_journal`]).
-    pub brush_gesture: Option<(String, photocraft_paint::BrushSettings)>,
+    pub brush_gesture: Option<(String, photoz_paint::BrushSettings)>,
     /// Name of the preset the current brush was last picked from. Kept across later edits (the
     /// preset stays "the current brush" so `brush.presets.update` can overwrite it); cleared when
     /// the brush is reset or the preset is gone.
@@ -370,11 +370,11 @@ impl Default for ToolState {
             foreground: [0.0, 0.0, 0.0, 1.0],
             background: [1.0, 1.0, 1.0, 1.0],
             // Photoshop's Brush tool starts at 10 % Smoothing.
-            brush: photocraft_paint::BrushSettings {
-                smoothing: photocraft_paint::brush::Smoothing { amount: 0.1, ..Default::default() },
+            brush: photoz_paint::BrushSettings {
+                smoothing: photoz_paint::brush::Smoothing { amount: 0.1, ..Default::default() },
                 ..Default::default()
             },
-            presets: photocraft_paint::presets::builtin(),
+            presets: photoz_paint::presets::builtin(),
             presets_rev: 0,
             mixer: Default::default(),
             brush_gesture: None,
@@ -401,16 +401,16 @@ pub struct Session {
     pub clipboard: Option<edit_cmds::Clip>,
     /// Layer › Layer Style › Copy Layer Style: effects, blend mode, fill opacity and the Advanced
     /// Blending switches.
-    pub style_clipboard: Option<(photocraft_doc::Effects, photocraft_color::BlendMode, f32, photocraft_doc::AdvancedBlending)>,
+    pub style_clipboard: Option<(photoz_doc::Effects, photoz_color::BlendMode, f32, photoz_doc::AdvancedBlending)>,
     /// Shape path context menu: copied vector fill and stroke styles.
-    pub path_fill_clipboard: Option<photocraft_doc::Fill>,
-    pub path_stroke_clipboard: Option<photocraft_doc::ShapeStroke>,
+    pub path_fill_clipboard: Option<photoz_doc::Fill>,
+    pub path_stroke_clipboard: Option<photoz_doc::ShapeStroke>,
     /// Colour management: proofing state, monitor profile, display transforms.
     pub color: color_cmds::ColorState,
     /// Open Edit Contents documents and the smart objects they update.
     pub smart_links: Vec<smart_cmds::SmartLink>,
     /// Type › Save Default Type Styles: character and paragraph style new type layers start from.
-    pub type_defaults: Option<(photocraft_doc::text::CharStyle, photocraft_doc::text::ParagraphStyle)>,
+    pub type_defaults: Option<(photoz_doc::text::CharStyle, photoz_doc::text::ParagraphStyle)>,
     /// Quick Mask Options (colour, opacity, colour indicates) used when entering Quick Mask.
     pub quick_mask_options: channel_cmds::QuickMaskOptions,
     /// Colour channel the running command may change (a single colour channel is targeted).
@@ -436,7 +436,7 @@ pub struct Session {
     /// Gate for every command the session runs, including the ones a command runs on its own
     /// behalf and `actions.play` steps. Untrusted sessions (MCP, the control channel) install
     /// the same check a top-level request sees. `None` runs everything, which is what a local
-    /// UI and `photocraft-cli run` do.
+    /// UI and `photoz-cli run` do.
     pub authorize: Option<fn(&str, &serde_json::Value) -> Result<()>>,
     /// Background jobs (see [`jobs`]).
     jobs: jobs::Jobs,
@@ -445,7 +445,7 @@ pub struct Session {
     samplers_removed: usize,
     /// The canvas-geometry map the next [`Session::edit`] applies to the Color Sampler points (crop,
     /// Canvas Size, Image Size, rotation set it just before their edit). Consumed by the edit.
-    sampler_map: Option<photocraft_geom::Affine>,
+    sampler_map: Option<photoz_geom::Affine>,
     /// Each open document's linked smart objects' files: size and modification time when last
     /// seen ([`link_watch`]).
     pub link_stamps: std::collections::HashMap<(u64, String), link_watch::Stamp>,
@@ -514,7 +514,7 @@ impl Session {
     /// Move the Color Sampler points through `a` in the next [`Session::edit`] (crop, Canvas Size,
     /// Image Size, rotation), dropping the ones that land outside the new canvas. View state: the
     /// points stay pinned to their pixels, no history step. Cleared by the edit it is set for.
-    pub(crate) fn set_sampler_map(&mut self, a: photocraft_geom::Affine) {
+    pub(crate) fn set_sampler_map(&mut self, a: photoz_geom::Affine) {
         self.sampler_map = Some(a);
     }
 
@@ -538,7 +538,7 @@ impl Session {
     pub fn add_document(&mut self, mut doc: Document, path: Option<String>) -> usize {
         // Persisted IDs can overlap the allocator, so check every replacement too.
         while self.docs.iter().any(|st| st.doc.id == doc.id) {
-            doc.id = photocraft_doc::DocId::fresh();
+            doc.id = photoz_doc::DocId::fresh();
         }
         let mut st = DocState::new(doc, path);
         st.history.max_states = self.prefs.get().performance.history_states.max(1) as usize;
@@ -716,7 +716,7 @@ impl Session {
             let bounds = st.doc.bounds();
             let n = st.color_samplers.len();
             st.color_samplers.retain_mut(|p| {
-                let q = a.apply(photocraft_geom::Point::new(p[0], p[1]));
+                let q = a.apply(photoz_geom::Point::new(p[0], p[1]));
                 *p = [q.x, q.y];
                 bounds.contains(q.x.floor() as i32, q.y.floor() as i32)
             });
@@ -771,18 +771,18 @@ impl Session {
         if clean {
             st.saved_revision = st.revision;
         }
-        st.last_damage = Some(photocraft_geom::Rect::EMPTY);
+        st.last_damage = Some(photoz_geom::Rect::EMPTY);
         Ok(())
     }
 
     /// Re-renders the pixels of type layers whose font arrived after they were drawn (the web
-    /// build fetches served fonts on demand, `photocraft_text::served`). The layers' model is
+    /// build fetches served fonts on demand, `photoz_text::served`). The layers' model is
     /// unchanged, so this is no history step and leaves a clean document clean. Unknown documents
     /// and layers are skipped. A document a background job is computing from must not move under
     /// it: its layers are returned, to try again later.
-    pub fn refresh_type_layers(&mut self, layers: &[(photocraft_doc::DocId, LayerId)]) -> Vec<(photocraft_doc::DocId, LayerId)> {
+    pub fn refresh_type_layers(&mut self, layers: &[(photoz_doc::DocId, LayerId)]) -> Vec<(photoz_doc::DocId, LayerId)> {
         let mut busy = Vec::new();
-        let mut docs: Vec<photocraft_doc::DocId> = Vec::new();
+        let mut docs: Vec<photoz_doc::DocId> = Vec::new();
         for (d, _) in layers {
             if !docs.contains(d) {
                 docs.push(*d);
@@ -799,7 +799,7 @@ impl Session {
             let mut doc = (*snapshot).clone();
             let mut changed = false;
             for (_, id) in mine {
-                if let Some(photocraft_doc::Layer { content: photocraft_doc::LayerContent::Text(t), .. }) = doc.layer_mut(*id) {
+                if let Some(photoz_doc::Layer { content: photoz_doc::LayerContent::Text(t), .. }) = doc.layer_mut(*id) {
                     type_cmds::refresh(&snapshot, t);
                     changed = true;
                 }

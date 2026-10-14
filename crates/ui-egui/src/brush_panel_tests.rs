@@ -1,14 +1,14 @@
 use egui::vec2;
 use egui_kittest::Harness;
-use photocraft_engine::paint::{Control, GrayTile, MaskMode, Pattern, PatternStyle, TipShape};
+use photoz_engine::paint::{Control, GrayTile, MaskMode, Pattern, PatternStyle, TipShape};
 
 use super::*;
 
-fn app() -> PhotocraftApp {
-    PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default())
+fn app() -> PhotozApp {
+    PhotozApp::new(photoz_engine::Session::new(), crate::Services::default())
 }
 
-fn last_journal(app: &PhotocraftApp) -> Option<(String, Value)> {
+fn last_journal(app: &PhotozApp) -> Option<(String, Value)> {
     app.session.journal.last().cloned()
 }
 
@@ -147,7 +147,7 @@ fn every_section_round_trips_through_set_brush() {
         let got = app.session.execute("brush.get", json!({})).unwrap();
         assert_eq!(serde_json::from_value::<BrushSettings>(got).unwrap(), after, "section {i}");
         // Replaying the journaled call onto a fresh session gives the same brush (drivable).
-        let mut s = photocraft_engine::Session::new();
+        let mut s = photoz_engine::Session::new();
         s.execute(&id, p).unwrap();
         assert_eq!(s.tools.brush, after, "replay of section {i}");
     }
@@ -276,11 +276,11 @@ fn section_locks_are_always_visible_and_toggle_on_click() {
 }
 
 /// A harness that shows the options bar with `tool` in the Studio (non-pro) theme.
-fn options_bar_harness(tool: crate::state::Tool) -> Harness<'static, PhotocraftApp> {
+fn options_bar_harness(tool: crate::state::Tool) -> Harness<'static, PhotozApp> {
     let mut app = app();
     app.ui.tool = tool;
     let mut h = Harness::builder().with_size(vec2(1400.0, 60.0)).build_ui_state(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PhotozApp| {
             if !ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
             }
@@ -288,7 +288,7 @@ fn options_bar_harness(tool: crate::state::Tool) -> Harness<'static, PhotocraftA
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
+    PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
     h.run_steps(4);
     h
 }
@@ -324,7 +324,7 @@ fn clone_stamp_opacity_and_flow_are_journaled_per_gesture() {
     let params = crate::retouch_ui::clone_params(h.state()).unwrap();
     assert_eq!(params["opacity"], json!(h.state().session.tools.brush.opacity * 100.0));
     assert_eq!(params["flow"], json!(h.state().session.tools.brush.flow * 100.0));
-    let mut replay = photocraft_engine::Session::new();
+    let mut replay = photoz_engine::Session::new();
     for (id, params) in &h.state().session.journal {
         replay.execute(id, params.clone()).unwrap();
     }
@@ -372,7 +372,7 @@ fn options_bar_edits_are_one_set_brush_per_gesture() {
     assert_eq!(h.state().session.journal.len(), n + 2);
     assert_eq!(h.state().session.journal.last().unwrap().1["brush"], json!({"pressureSize": !was}));
     // Replaying the journal gives the same brush.
-    let mut s = photocraft_engine::Session::new();
+    let mut s = photoz_engine::Session::new();
     for (id, p) in &h.state().session.journal {
         s.execute(id, p.clone()).unwrap();
     }
@@ -393,7 +393,7 @@ fn brush_mode_dropdown_shows_outside_the_pro_themes() {
     h.run();
     h.key_press(egui::Key::ArrowDown);
     h.run_steps(3);
-    assert_eq!(h.state().session.tools.brush.mode, photocraft_doc::BlendMode::Dissolve);
+    assert_eq!(h.state().session.tools.brush.mode, photoz_doc::BlendMode::Dissolve);
     let j = &h.state().session.journal;
     assert_eq!(j.len(), n + 1, "{:?}", &j[n..]);
     assert_eq!(j[n].0, "tools.setBrush");
@@ -404,7 +404,7 @@ fn airbrush_smoothing_options_and_symmetry_buttons_work() {
     // #1177: in the default (Photoshop) theme these options-bar buttons did nothing.
     use egui_kittest::kittest::Queryable;
     let mut h = app_harness();
-    let brush = |h: &Harness<'static, PhotocraftApp>| h.state().session.tools.brush.clone();
+    let brush = |h: &Harness<'static, PhotozApp>| h.state().session.tools.brush.clone();
 
     // The airbrush toggles Build-up, one setBrush each click.
     let was = brush(&h).build_up;
@@ -438,7 +438,7 @@ fn airbrush_smoothing_options_and_symmetry_buttons_work() {
     h.run_steps(3);
     h.get_by_label("Work Path").click();
     h.run_steps(3);
-    let source = |h: &Harness<'static, PhotocraftApp>| h.state().session.active().unwrap().symmetry.as_ref().and_then(|a| a.path_source().map(str::to_owned));
+    let source = |h: &Harness<'static, PhotozApp>| h.state().session.active().unwrap().symmetry.as_ref().and_then(|a| a.path_source().map(str::to_owned));
     assert_eq!(source(&h).as_deref(), Some("work"));
     assert_eq!(last_journal(h.state()).unwrap(), ("paint.symmetryFromPath".to_string(), json!({"name": "work"})));
     h.get_by_label("Set painting symmetry options").click();
@@ -497,12 +497,12 @@ fn drop_targets_and_actions_reorder_presets() {
     assert_eq!(group_key(p, UNGROUPED), "");
     let (group, folder, index) = drop_target(p, "A1", "A3", true).unwrap();
     apply(&mut app, vec![Action::Move { name: "A1".into(), group, folder: Some(folder), index: Some(index) }]);
-    let names = |app: &PhotocraftApp, g: &str| app.session.tools.presets.iter().filter(|x| x.group == g).map(|x| x.name.clone()).collect::<Vec<_>>();
+    let names = |app: &PhotozApp, g: &str| app.session.tools.presets.iter().filter(|x| x.group == g).map(|x| x.name.clone()).collect::<Vec<_>>();
     assert_eq!(names(&app, "Alpha"), ["A2", "A3", "A1"]);
     apply(&mut app, vec![Action::Move { name: "A2".into(), group: "Beta".into(), folder: None, index: None }]);
     assert_eq!(names(&app, "Beta"), ["B1", "A2"]);
     apply(&mut app, vec![Action::MoveGroup { group: "Beta".into(), folder: vec![], before: Some("Alpha".into()) }]);
-    let order = photocraft_engine::brush_preset_cmds::group_order(&app.session.tools.presets);
+    let order = photoz_engine::brush_preset_cmds::group_order(&app.session.tools.presets);
     assert!(order.iter().position(|g| g == "Beta") < order.iter().position(|g| g == "Alpha"));
     // Rename and delete from the context menu.
     apply(&mut app, vec![Action::Rename(Renaming { group: false, name: "A3".into(), folder: vec![], text: "Third".into() })]);
@@ -527,13 +527,13 @@ fn drop_targets_and_actions_reorder_presets() {
     }
 }
 
-fn harness(tab: usize, section: usize) -> Harness<'static, PhotocraftApp> {
+fn harness(tab: usize, section: usize) -> Harness<'static, PhotozApp> {
     let mut app = app();
     app.ui.panels.brush_settings = true;
     app.ui.brush_tab = tab;
     app.ui.brush_section = section;
     let mut h = Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PhotozApp| {
             let ctx = ui.ctx().clone();
             if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -542,12 +542,12 @@ fn harness(tab: usize, section: usize) -> Harness<'static, PhotocraftApp> {
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);
+    PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);
     h.run_steps(4);
     h
 }
 
-fn toggle_value(app: &PhotocraftApp, section: usize) -> bool {
+fn toggle_value(app: &PhotozApp, section: usize) -> bool {
     let brush = serde_json::to_value(&app.session.tools.brush).unwrap();
     let path = match section {
         8 => "/noise",
@@ -598,7 +598,7 @@ fn hue_jitter_amount_edits_keep_percentage_units_and_command_routing() {
     expected.color_dynamics.hue_jitter = 1.0;
     assert_eq!(h.state().session.tools.brush, expected, "the amount clamps at 100% and preserves neighboring settings");
     assert_eq!(last_journal(h.state()).unwrap().0, "tools.setBrush");
-    let mut replay = photocraft_engine::Session::new();
+    let mut replay = photoz_engine::Session::new();
     for (id, params) in h.state().session.journal.clone() {
         replay.execute(&id, params).unwrap();
     }
@@ -800,7 +800,7 @@ fn brushes_panel_groups_collapse_and_filter() {
     let groups = grouped_presets(&h.state().session.tools.presets);
     assert!(groups.len() >= 2, "{groups:?}");
     let ctx = h.ctx.clone();
-    let shown = |h: &mut Harness<'static, PhotocraftApp>| {
+    let shown = |h: &mut Harness<'static, PhotozApp>| {
         h.run_steps(2);
         brush_preview::with_cache(&ctx, |c| c.len())
     };
@@ -918,7 +918,7 @@ fn folder_actions_become_folder_commands() {
     apply(&mut app, vec![Action::Move { name: "Kit Pen".into(), group: "Kit".into(), folder: Some(vec!["Dry".into()]), index: None }]);
     assert_eq!(paint::presets::find(&app.session.tools.presets, "Kit Pen").unwrap().folder, ["Dry"]);
     apply(&mut app, vec![Action::MoveGroup { group: "Kit".into(), folder: vec!["Dry".into()], before: Some("Inks".into()) }]);
-    assert_eq!(photocraft_engine::brush_preset_cmds::subfolder_order(&app.session.tools.presets, "Kit", &[]), ["Dry", "Inks"]);
+    assert_eq!(photoz_engine::brush_preset_cmds::subfolder_order(&app.session.tools.presets, "Kit", &[]), ["Dry", "Inks"]);
     assert_eq!(last_journal(&app).unwrap(), ("brush.presets.moveGroup".to_string(), json!({ "group": "Kit", "folder": ["Dry"], "before": "Inks" })));
 }
 
@@ -974,7 +974,7 @@ fn folder_drops_map_to_move_commands() {
     apply(&mut app, vec![out]);
     let chalk = paint::presets::find(&app.session.tools.presets, "Kit Chalk").unwrap();
     assert_eq!((chalk.group.as_str(), chalk.folder.clone()), ("Fine", v(&["Dry"])));
-    let order = photocraft_engine::brush_preset_cmds::group_order(&app.session.tools.presets);
+    let order = photoz_engine::brush_preset_cmds::group_order(&app.session.tools.presets);
     assert!(order.iter().position(|g| g == "Fine") < order.iter().position(|g| g == "Kit"));
 }
 
@@ -1008,15 +1008,15 @@ fn dragging_a_folder_header_onto_another_moves_it_inside() {
 
 /// A fresh session with the Brush tool: shortcuts, the options bar and the Brush Settings window,
 /// in the default theme (#258).
-fn app_harness() -> Harness<'static, PhotocraftApp> {
+fn app_harness() -> Harness<'static, PhotozApp> {
     app_harness_with_language(crate::i18n::Lang::EN)
 }
 
-fn app_harness_with_language(lang: crate::i18n::Lang) -> Harness<'static, PhotocraftApp> {
+fn app_harness_with_language(lang: crate::i18n::Lang) -> Harness<'static, PhotozApp> {
     let mut app = app();
     app.ui.tool = crate::state::Tool::Brush;
     let mut h = Harness::builder().with_size(vec2(1400.0, 900.0)).build_ui_state(
-        move |ui, app: &mut PhotocraftApp| {
+        move |ui, app: &mut PhotozApp| {
             let ctx = ui.ctx().clone();
             if !ctx.fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 return;
@@ -1031,7 +1031,7 @@ fn app_harness_with_language(lang: crate::i18n::Lang) -> Harness<'static, Photoc
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::default());
+    PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::default());
     h.run_steps(4);
     h
 }
@@ -1243,14 +1243,14 @@ fn hand_tool_offers_scale_buttons_and_requests_the_right_view() {
     app.ui.tool = crate::state::Tool::Hand;
     app.ui.views[0].zoom = 2.0;
     let mut h = Harness::builder().with_size(vec2(1400.0, 60.0)).build_ui_state(
-        |ui, app: &mut PhotocraftApp| {
+        |ui, app: &mut PhotozApp| {
             if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                 crate::panels::options_bar(app, ui);
             }
         },
         app,
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
+    PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
     h.run_steps(4);
 
     h.get_by_label("100%").click();
@@ -1317,7 +1317,7 @@ fn brush_settings_hamburger_menu_actions() {
     h.run_steps(2);
     h.get_by_label("Reset All Locked Settings").click();
     h.run_steps(2);
-    assert_eq!(h.state().session.tools.brush.locks, photocraft_paint::brush::SectionLocks::default());
+    assert_eq!(h.state().session.tools.brush.locks, photoz_paint::brush::SectionLocks::default());
 
     // 5. Copy Texture to Other Tools copies texture to other tools with texture enabled
     let mut h = harness(0, 0);
@@ -1371,7 +1371,7 @@ fn brushes_button_at_top_of_brush_settings_opens_brushes_panel() {
 }
 
 /// The fill painted for the check box in `rect` in the last frame (the topmost filled rect there).
-fn box_fill(h: &Harness<'_, PhotocraftApp>, rect: egui::Rect) -> Option<Color32> {
+fn box_fill(h: &Harness<'_, PhotozApp>, rect: egui::Rect) -> Option<Color32> {
     h.output()
         .shapes
         .iter()

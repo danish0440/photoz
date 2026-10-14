@@ -7,16 +7,16 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
-use crate::PhotocraftApp;
+use crate::PhotozApp;
 use crate::state::Tool;
 use crate::vector_ui::PenPath;
 
-fn harness() -> Harness<'static, PhotocraftApp> {
-    let mut s = photocraft_engine::Session::new();
+fn harness() -> Harness<'static, PhotozApp> {
+    let mut s = photoz_engine::Session::new();
     s.execute("file.new", json!({"width": 200, "height": 100})).unwrap();
     let mut h = Harness::builder().with_size(vec2(1280.0, 800.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(s, crate::Services::default())
+        PhotozApp::setup_context(&cc.egui_ctx, Default::default());
+        PhotozApp::new(s, crate::Services::default())
     });
     h.run_steps(6);
     h
@@ -31,7 +31,7 @@ fn command() -> Modifiers {
     }
 }
 
-fn press(h: &mut Harness<'_, PhotocraftApp>, key: Key, m: Modifiers) {
+fn press(h: &mut Harness<'_, PhotozApp>, key: Key, m: Modifiers) {
     h.event(Event::ModifiersChanged(m));
     h.event(Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers: m });
     h.event(Event::Key { key, physical_key: None, pressed: false, repeat: false, modifiers: m });
@@ -45,7 +45,7 @@ fn rect_path(x: f64, y: f64, w: f64, h: f64) -> serde_json::Value {
 }
 
 /// The selection's bounds (x, y, width, height), if any.
-fn selection(h: &Harness<'_, PhotocraftApp>) -> Option<[i64; 4]> {
+fn selection(h: &Harness<'_, PhotozApp>) -> Option<[i64; 4]> {
     let r = h.state().session.active()?.doc.selection.as_ref()?.content_bounds();
     Some([r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0].map(i64::from))
 }
@@ -123,7 +123,7 @@ fn without_a_path_it_says_why_and_the_key_can_be_rebound() {
     assert_eq!(selection(&h), Some([10, 10, 20, 20]), "{}", h.state().ui.status);
 }
 
-fn panel(h: &mut Harness<'_, PhotocraftApp>, tab: usize) {
+fn panel(h: &mut Harness<'_, PhotozApp>, tab: usize) {
     let ctx = h.ctx.clone();
     let (req, _) = crate::control::ControlRequest::new(
         "ui.set",
@@ -133,7 +133,7 @@ fn panel(h: &mut Harness<'_, PhotocraftApp>, tab: usize) {
     h.run_steps(4);
 }
 
-fn click(h: &mut Harness<'_, PhotocraftApp>, at: egui::Pos2, modifiers: Modifiers) {
+fn click(h: &mut Harness<'_, PhotozApp>, at: egui::Pos2, modifiers: Modifiers) {
     h.hover_at(at);
     h.event(Event::ModifiersChanged(modifiers));
     h.run_steps(1);
@@ -159,7 +159,7 @@ fn thumbnail_selection_ctrl_click_shape_keeps_active_layer_and_supports_undo() {
     h.run_steps(2);
     click(&mut h, egui::pos2(row.row.left() + 46.0, row.row.center().y), command());
     assert_eq!(selection(&h), Some([40, 20, 60, 40]), "{}", h.state().ui.status);
-    assert_eq!(h.state().session.active().unwrap().active_layer, Some(photocraft_doc::LayerId(active)));
+    assert_eq!(h.state().session.active().unwrap().active_layer, Some(photoz_doc::LayerId(active)));
     h.state_mut().run("edit.undo", json!({})).unwrap();
     assert!(selection(&h).is_none());
     h.state_mut().run("edit.redo", json!({})).unwrap();
@@ -223,7 +223,7 @@ fn thumbnail_selection_ctrl_click_layer_path_preserves_panel_target() {
     assert_eq!(selection(&h), Some([40, 20, 60, 40]));
     assert_eq!(h.state().ui.selected_path.as_deref(), Some("work"));
     assert!(!h.state().ui.mask_target && !h.state().ui.vector_mask_target);
-    if let Ok(path) = std::env::var("PHOTOCRAFT_THUMBNAIL_SELECTION_SCREENSHOT") {
+    if let Ok(path) = std::env::var("PHOTOZ_THUMBNAIL_SELECTION_SCREENSHOT") {
         h.render().unwrap().save(path).unwrap();
     }
 }

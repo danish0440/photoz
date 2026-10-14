@@ -1,9 +1,9 @@
 //! #2260: copying an irregular selection retains RGB under zero alpha. The Magic Wand
 //! must select the visible transparent area, independently of those hidden colours.
 
-use photocraft_doc::LayerId;
-use photocraft_engine::Session;
-use photocraft_geom::Rect;
+use photoz_doc::LayerId;
+use photoz_engine::Session;
+use photoz_geom::Rect;
 use serde_json::json;
 
 #[test]

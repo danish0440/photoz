@@ -8,22 +8,22 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-APP_ID=ai.storyteller.photocraft
+APP_ID=com.pintaz.photoz
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 # Fake AppDir with the real AppRun, .desktop template, icons, and a stub binary.
-APPDIR="$TMP/PhotoCraft.AppDir"
+APPDIR="$TMP/PhotoZ.AppDir"
 mkdir -p "$APPDIR/usr/bin"
 install -Dm755 "$HERE/AppRun" "$APPDIR/AppRun"
 install -Dm644 "$HERE/$APP_ID.desktop" "$APPDIR/usr/share/applications/$APP_ID.desktop"
 mkdir -p "$APPDIR/usr/share/icons"
 cp -R "$ROOT/assets/app-icon/hicolor" "$APPDIR/usr/share/icons/"
-printf '#!/bin/sh\necho "stub: $*"\n' >"$APPDIR/usr/bin/photocraft"
-chmod +x "$APPDIR/usr/bin/photocraft"
+printf '#!/bin/sh\necho "stub: $*"\n' >"$APPDIR/usr/bin/photoz"
+chmod +x "$APPDIR/usr/bin/photoz"
 
-APPIMAGE="$TMP/photocraft test.AppImage" # spaces on purpose: Exec must stay quoted
+APPIMAGE="$TMP/photoz test.AppImage" # spaces on purpose: Exec must stay quoted
 : >"$APPIMAGE"
 export APPIMAGE
 export HOME="$TMP/home"
@@ -75,8 +75,8 @@ grep -Fxq "Exec=\"$(readlink -f "$APPIMAGE")\" %F" "$DESKTOP" || fail "Exec not 
 # 6. External AppImage integrator (#3623): if another .desktop file in $XDG_DATA_HOME/applications
 #    already launches this AppImage (e.g. AppImageLauncher's appimagekit-*.desktop), AppRun removes
 #    its own duplicate .desktop entry while keeping the hicolor icons installed.
-ext_desktop="$XDG_DATA_HOME/applications/appimagekit-photocraft.desktop"
-printf '[Desktop Entry]\nType=Application\nName=PhotoCraft\nExec="%s" %%F\nIcon=%s\n' "$(readlink -f "$APPIMAGE")" "$APP_ID" >"$ext_desktop"
+ext_desktop="$XDG_DATA_HOME/applications/appimagekit-photoz.desktop"
+printf '[Desktop Entry]\nType=Application\nName=PhotoZ\nExec="%s" %%F\nIcon=%s\n' "$(readlink -f "$APPIMAGE")" "$APP_ID" >"$ext_desktop"
 "$APPDIR/AppRun" >/dev/null || fail "launch with external integrator desktop entry exited non-zero"
 [ ! -e "$DESKTOP" ] || fail "duplicate desktop entry kept alongside external integrator entry"
 [ -f "$ext_desktop" ] || fail "external integrator desktop entry removed"
@@ -91,7 +91,7 @@ DESKTOPINTEGRATION=AppImageLauncher "$APPDIR/AppRun" >/dev/null || fail "DESKTOP
 
 # 8. Opt-out installs nothing.
 rm -rf "$XDG_DATA_HOME"
-PHOTOCRAFT_NO_DESKTOP_INTEGRATION=1 "$APPDIR/AppRun" >/dev/null || fail "opt-out launch exited non-zero"
+PHOTOZ_NO_DESKTOP_INTEGRATION=1 "$APPDIR/AppRun" >/dev/null || fail "opt-out launch exited non-zero"
 [ ! -e "$XDG_DATA_HOME" ] || fail "opt-out still integrated"
 
 # 9. An unwritable data dir never blocks the launch.

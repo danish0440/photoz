@@ -18,8 +18,8 @@ Workspace applications are:
 
 | Application | Path | Purpose |
 |---|---|---|
-| PhotoCraft desktop | `apps/photocraft` | eframe/wgpu application and loopback control server |
-| PhotoCraft CLI | `apps/photocraft-cli` | Convert, inspect, run, batch, JSON-lines serve, and MCP |
-| PhotoCraft web | `apps/photocraft-web` | The UI and engine compiled for WebAssembly |
+| PhotoZ desktop | `apps/photoz` | eframe/wgpu application and loopback control server |
+| PhotoZ CLI | `apps/photoz-cli` | Convert, inspect, run, batch, JSON-lines serve, and MCP |
+| PhotoZ web | `apps/photoz-web` | The UI and engine compiled for WebAssembly |
 
-New crates must be registered in `xtask/src/layers.rs`. Nothing below `ui-egui` may depend on egui, eframe, winit, or rfd. The `psd`, `codecs`, and `cms` crates have additional independence requirements documented in [`AGENTS.md`](https://github.com/storytold/photocraft/blob/main/AGENTS.md).
+New crates must be registered in `xtask/src/layers.rs`. Nothing below `ui-egui` may depend on egui, eframe, winit, or rfd. The `psd`, `codecs`, and `cms` crates have additional independence requirements documented in [`AGENTS.md`](https://github.com/danish0440/photoz/blob/main/AGENTS.md).

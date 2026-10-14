@@ -6,12 +6,12 @@ use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::Mutex;
 
-use photocraft_doc::Document;
+use photoz_doc::Document;
 use serde_json::{Map, Value, json};
 
 use crate::state::DialogKind;
 use crate::theme::Tokens;
-use crate::{ExportSettings, PhotocraftApp};
+use crate::{ExportSettings, PhotozApp};
 
 const FORMATS: [(&str, &str); 6] = [("png", "PNG"), ("jpg", "JPG"), ("webp", "WebP"), ("tif", "TIFF"), ("tga", "TGA"), ("ico", "ICO")];
 
@@ -22,7 +22,7 @@ pub(crate) const COMMAND: &str = "file.export.exportAs";
 
 /// The dialog is seeded from the settings it was used with last (see [`COMMAND`]); a value that
 /// no longer matches a control (a hand-edited preferences file) is left at its default.
-fn seed_remembered(app: &PhotocraftApp, f: &mut Map<String, Value>) {
+fn seed_remembered(app: &PhotozApp, f: &mut Map<String, Value>) {
     let Some(Value::Object(saved)) = app.session.prefs().dialogs.get(COMMAND) else { return };
     if let Some(v) = saved.get("format").and_then(Value::as_str).filter(|v| FORMATS.iter().any(|(k, _)| k == v)) {
         f.insert("format".into(), json!(v));
@@ -47,7 +47,7 @@ fn seed_remembered(app: &PhotocraftApp, f: &mut Map<String, Value>) {
 }
 
 /// Record the settings for the next Export As (see [`seed_remembered`]).
-fn remember(app: &mut PhotocraftApp, f: &Map<String, Value>) {
+fn remember(app: &mut PhotozApp, f: &Map<String, Value>) {
     const KEYS: [&str; 7] = ["format", "quality", "lossless", "transparency", "scale", "metadata", "tgaBits"];
     let saved: Map<String, Value> = KEYS.iter().filter_map(|k| f.get(*k).map(|v| ((*k).to_string(), v.clone()))).collect();
     app.session.prefs.edit(|p| {
@@ -55,7 +55,7 @@ fn remember(app: &mut PhotocraftApp, f: &Map<String, Value>) {
     });
 }
 
-pub fn open(app: &mut PhotocraftApp) -> Result<u64, String> {
+pub fn open(app: &mut PhotozApp) -> Result<u64, String> {
     let st = app.session.active().ok_or("no document")?;
     let mut f = Map::new();
     f.insert("__export".into(), json!(true));
@@ -74,9 +74,9 @@ pub fn open(app: &mut PhotocraftApp) -> Result<u64, String> {
 }
 
 /// Layer › Export As…: the same dialog for just the active layer (trimmed to its pixels).
-pub fn open_layer(app: &mut PhotocraftApp, layer: photocraft_doc::LayerId) -> Result<u64, String> {
+pub fn open_layer(app: &mut PhotozApp, layer: photoz_doc::LayerId) -> Result<u64, String> {
     let st = app.session.active().ok_or("no document")?;
-    let ldoc = photocraft_engine::layer_menu_cmds::layer_document(&st.doc, layer).map_err(|e| e.to_string())?;
+    let ldoc = photoz_engine::layer_menu_cmds::layer_document(&st.doc, layer).map_err(|e| e.to_string())?;
     let id = open(app)?;
     if let Some(d) = app.ui.dialogs.iter_mut().find(|d| d.id == id) {
         d.fields.insert("__layer".into(), json!(layer.0));
@@ -89,7 +89,7 @@ pub fn open_layer(app: &mut PhotocraftApp, layer: photocraft_doc::LayerId) -> Re
 
 /// Layer › Export As… with several layers (artboards, say) selected: the same dialog, then one
 /// file per layer with its settings (#3629). The preview shows the first layer.
-pub fn open_layers(app: &mut PhotocraftApp, layers: &[photocraft_doc::LayerId]) -> Result<u64, String> {
+pub fn open_layers(app: &mut PhotozApp, layers: &[photoz_doc::LayerId]) -> Result<u64, String> {
     let (first, n) = match layers {
         [] => return Err("no selected layers".into()),
         [one] => return open_layer(app, *one),
@@ -105,7 +105,7 @@ pub fn open_layers(app: &mut PhotocraftApp, layers: &[photocraft_doc::LayerId]) 
 }
 
 /// Layer › Quick Export as PNG.
-pub fn quick_export_layer_png(app: &mut PhotocraftApp, layer: photocraft_doc::LayerId) -> Result<Value, String> {
+pub fn quick_export_layer_png(app: &mut PhotozApp, layer: photoz_doc::LayerId) -> Result<Value, String> {
     let mut f = Map::new();
     f.insert("format".into(), json!("png"));
     f.insert("transparency".into(), json!(true));
@@ -116,7 +116,7 @@ pub fn quick_export_layer_png(app: &mut PhotocraftApp, layer: photocraft_doc::La
 
 /// Export each selected layer separately, with one destination prompt for the batch.
 /// The chosen path names the first file; subsequent files have numbered sibling names.
-pub fn quick_export_selected_layers_png(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub fn quick_export_selected_layers_png(app: &mut PhotozApp) -> Result<Value, String> {
     let st = app.session.active().ok_or("no document")?;
     let layers = st.selected_layers();
     if layers.len() == 1 {
@@ -128,7 +128,7 @@ pub fn quick_export_selected_layers_png(app: &mut PhotocraftApp) -> Result<Value
     // Capture all sources before showing the dialog: changing selection or document while it
     // is open cannot change which layers get exported.
     let docs: Vec<_> =
-        layers.into_iter().map(|id| photocraft_engine::layer_menu_cmds::layer_document(&st.doc, id).map_err(|e| e.to_string())).collect::<Result<_, _>>()?;
+        layers.into_iter().map(|id| photoz_engine::layer_menu_cmds::layer_document(&st.doc, id).map_err(|e| e.to_string())).collect::<Result<_, _>>()?;
     let suggested = format!("{}.png", export_name(&st.doc.name));
     app.pick_save(&suggested, move |app, path| {
         if !path.to_ascii_lowercase().ends_with(".png") {
@@ -191,12 +191,12 @@ fn batch_paths(path: &str, docs: &[Document]) -> Vec<String> {
 /// The document a dialog exports: the whole image, or one layer (`__layer`).
 fn source_document_from(doc: Arc<Document>, f: &Map<String, Value>) -> Result<Arc<Document>, String> {
     match f.get("__layer").and_then(Value::as_u64) {
-        Some(id) => photocraft_engine::layer_menu_cmds::layer_document(&doc, photocraft_doc::LayerId(id)).map(Arc::new).map_err(|e| e.to_string()),
+        Some(id) => photoz_engine::layer_menu_cmds::layer_document(&doc, photoz_doc::LayerId(id)).map(Arc::new).map_err(|e| e.to_string()),
         None => Ok(doc),
     }
 }
 
-fn source_document(app: &PhotocraftApp, f: &Map<String, Value>) -> Result<Arc<Document>, String> {
+fn source_document(app: &PhotozApp, f: &Map<String, Value>) -> Result<Arc<Document>, String> {
     source_document_from(app.session.active().ok_or("no document")?.doc.clone(), f)
 }
 
@@ -210,7 +210,7 @@ fn n(f: &Map<String, Value>, k: &str, d: f64) -> f64 {
 /// The document as exported: scaled (engine Image Size, bicubic) and flattened over white when
 /// transparency is off or the format has no alpha.
 fn export_document(doc: &Document, f: &Map<String, Value>, max_side: Option<u32>) -> Result<Document, String> {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = photoz_engine::Session::new();
     s.add_document(doc.clone(), None);
     let mut scale = n(f, "scale", 100.0) / 100.0;
     if let Some(m) = max_side {
@@ -244,7 +244,7 @@ fn scaled_size(w: f64, h: f64, scale: f64) -> (f64, f64) {
 
 /// Export As already supports lossy WebP; reuse the Quick Export defaults when
 /// choosing that format so both flows expose the same quality and lossless options.
-fn set_format_defaults(f: &mut Map<String, Value>, fmt: &str, prefs: &photocraft_engine::prefs::Export) {
+fn set_format_defaults(f: &mut Map<String, Value>, fmt: &str, prefs: &photoz_engine::prefs::Export) {
     f.insert("format".into(), json!(fmt));
     match fmt {
         "jpg" => {
@@ -269,8 +269,8 @@ fn lossless(f: &Map<String, Value>) -> bool {
 
 /// TGA bits per pixel: `"24"` or `"32"`; `"auto"` (the default) is 32 with an alpha channel or
 /// transparency, else 24, as Export As wrote before it offered the choice.
-fn tga_bits(f: &Map<String, Value>) -> Option<photocraft_io::TgaBits> {
-    s(f, "tgaBits").parse().ok().and_then(photocraft_io::TgaBits::from_bits)
+fn tga_bits(f: &Map<String, Value>) -> Option<photoz_io::TgaBits> {
+    s(f, "tgaBits").parse().ok().and_then(photoz_io::TgaBits::from_bits)
 }
 
 fn settings(f: &Map<String, Value>) -> ExportSettings {
@@ -300,7 +300,7 @@ fn scaled_estimate(bytes: usize, doc: &Document, proxy: &Document, f: &Map<Strin
 }
 
 /// Estimated size (bytes) from the already prepared proxy encode, scaled by pixel count.
-fn estimate(app: &PhotocraftApp, doc: &Document, proxy: &Document, f: &Map<String, Value>) -> Option<u64> {
+fn estimate(app: &PhotozApp, doc: &Document, proxy: &Document, f: &Map<String, Value>) -> Option<u64> {
     let export = app.services.export.as_ref()?;
     let (bytes, _) = export(proxy, &format!("estimate.{}", s_fmt(f)), &settings(f)).ok()?;
     Some(scaled_estimate(bytes.len(), doc, proxy, f))
@@ -314,11 +314,11 @@ struct PreviewPixels {
 }
 
 fn preview_pixels(proxy: &Document, estimate: Option<u64>) -> PreviewPixels {
-    let img = photocraft_compose::thumbnail(proxy, 360);
+    let img = photoz_compose::thumbnail(proxy, 360);
     PreviewPixels { estimate, width: img.width as usize, height: img.height as usize, rgba: img.pixels }
 }
 
-fn preview_sync(app: &PhotocraftApp, doc: &Document, f: &Map<String, Value>) -> Result<PreviewPixels, String> {
+fn preview_sync(app: &PhotozApp, doc: &Document, f: &Map<String, Value>) -> Result<PreviewPixels, String> {
     let proxy = preview_proxy(doc, f)?;
     Ok(preview_pixels(&proxy, estimate(app, doc, &proxy, f)))
 }
@@ -407,7 +407,7 @@ fn poll_or_start_preview(
 #[cfg(not(target_arch = "wasm32"))]
 fn estimate_native(doc: &Document, proxy: &Document, f: &Map<String, Value>) -> Option<u64> {
     let settings = settings(f);
-    let mut options = photocraft_io::ExportOptions::default();
+    let mut options = photoz_io::ExportOptions::default();
     if let Some(quality) = settings.jpeg_quality {
         options.encode.jpeg_quality = quality;
     }
@@ -416,15 +416,15 @@ fn estimate_native(doc: &Document, proxy: &Document, f: &Map<String, Value>) -> 
         options.encode.webp_quality = quality;
     }
     options.tiff_layers = settings.tiff_layers;
-    options.xmp = if settings.xmp_all { photocraft_io::XmpEmbed::All } else { photocraft_io::XmpEmbed::None };
+    options.xmp = if settings.xmp_all { photoz_io::XmpEmbed::All } else { photoz_io::XmpEmbed::None };
     options.tga_bits = settings.tga_bits;
     options.image_previews = settings.image_previews;
     options.psd_maximize_compatibility = settings.psd_maximize_compatibility;
-    let bytes = photocraft_io::export(proxy, &format!("estimate.{}", s_fmt(f)), &options).ok()?.bytes;
+    let bytes = photoz_io::export(proxy, &format!("estimate.{}", s_fmt(f)), &options).ok()?.bytes;
     Some(scaled_estimate(bytes.len(), doc, proxy, f))
 }
 
-pub fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>) {
+pub fn body(app: &mut PhotozApp, ui: &mut egui::Ui, f: &mut Map<String, Value>) {
     let t = Tokens::get(ui.ctx());
     let Some(doc) = app.session.active().map(|s| s.doc.clone()) else { return };
     ui.horizontal_top(|ui| {
@@ -545,10 +545,10 @@ pub fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Valu
 }
 
 /// Export with the dialog's settings: choose a path, render, encode, write.
-pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value, String> {
+pub fn confirm(app: &mut PhotozApp, f: &Map<String, Value>) -> Result<Value, String> {
     remember(app, f);
     if let Some(layers) = f.get("__layers").and_then(Value::as_array) {
-        let ids: Vec<_> = layers.iter().filter_map(Value::as_u64).map(photocraft_doc::LayerId).collect();
+        let ids: Vec<_> = layers.iter().filter_map(Value::as_u64).map(photoz_doc::LayerId).collect();
         return confirm_layers(app, f, &ids);
     }
     let doc = source_document(app, f)?;
@@ -575,10 +575,10 @@ pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value,
 /// [`confirm`] for several layers: one destination prompt, then each layer exported with the
 /// dialog's settings and named as Quick Export names a selection's files. The layers are captured
 /// when asked, so changing the selection or document meanwhile can't change what is exported.
-fn confirm_layers(app: &mut PhotocraftApp, f: &Map<String, Value>, ids: &[photocraft_doc::LayerId]) -> Result<Value, String> {
+fn confirm_layers(app: &mut PhotozApp, f: &Map<String, Value>, ids: &[photoz_doc::LayerId]) -> Result<Value, String> {
     let st = app.session.active().ok_or("no document")?;
     let docs: Vec<Document> =
-        ids.iter().map(|id| photocraft_engine::layer_menu_cmds::layer_document(&st.doc, *id).map_err(|e| e.to_string())).collect::<Result<_, _>>()?;
+        ids.iter().map(|id| photoz_engine::layer_menu_cmds::layer_document(&st.doc, *id).map_err(|e| e.to_string())).collect::<Result<_, _>>()?;
     if docs.is_empty() {
         return Err("no selected layers".into());
     }
@@ -608,7 +608,7 @@ fn confirm_layers(app: &mut PhotocraftApp, f: &Map<String, Value>, ids: &[photoc
 /// File › Export › Quick Export as PNG: the format, quality, metadata, colour space and location
 /// from File › Export › Export Preferences (engine `file.export.quickExport`). On the web (no
 /// file system) it falls back to a PNG download through the export service.
-pub fn quick_export_png(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub fn quick_export_png(app: &mut PhotozApp) -> Result<Value, String> {
     if !cfg!(target_arch = "wasm32") {
         let prefs = app.session.prefs().export.clone();
         let fmt = serde_json::to_value(prefs.quick_export_format).ok().and_then(|v| v.as_str().map(str::to_string)).unwrap_or_else(|| "png".into());
@@ -633,7 +633,7 @@ pub fn quick_export_png(app: &mut PhotocraftApp) -> Result<Value, String> {
 }
 
 /// Runs Quick Export with `p` (an explicit `path`, or none for the document's folder).
-fn quick_export(app: &mut PhotocraftApp, p: Value) -> Result<Value, String> {
+fn quick_export(app: &mut PhotozApp, p: Value) -> Result<Value, String> {
     let r = app.run("file.export.quickExport", p)?;
     let template = "Exported {path}";
     app.ui.status = crate::i18n::fmt(tl!(template), &[("path", r["path"].as_str().unwrap_or_default())]);
@@ -644,7 +644,7 @@ fn quick_export(app: &mut PhotocraftApp, p: Value) -> Result<Value, String> {
 mod tests {
     #[test]
     fn ico_export_is_available_and_rejects_oversize_output() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 300, "height": 200})).unwrap();
         let mut f = Map::new();
         f.insert("format".into(), json!("ico"));
@@ -662,7 +662,7 @@ mod tests {
     /// dialog settings), and a value no control accepts keeps its default.
     #[test]
     fn export_as_opens_with_the_settings_used_last() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 20, "height": 10})).unwrap();
         app.session.prefs.edit(|p| {
             p.dialogs.insert(
@@ -693,7 +693,7 @@ mod tests {
     /// the layer the dialog was opened with.
     #[test]
     fn remembering_keeps_only_the_dialog_settings() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         let mut f = Map::new();
         f.insert("format".into(), json!("webp"));
         f.insert("scale".into(), json!(50));
@@ -709,7 +709,7 @@ mod tests {
 
     #[test]
     fn export_document_scales_height_when_rounded_width_is_unchanged() {
-        use photocraft_doc::{Color, ColorMode, SampleType, Size};
+        use photoz_doc::{Color, ColorMode, SampleType, Size};
 
         for depth in [SampleType::U8, SampleType::U16, SampleType::F32] {
             for (width, height, scale, expected) in [
@@ -735,7 +735,7 @@ mod tests {
 
     #[test]
     fn export_document_proxy_limits_both_dimensions_before_rounding() {
-        use photocraft_doc::{Color, ColorMode, SampleType, Size};
+        use photoz_doc::{Color, ColorMode, SampleType, Size};
 
         for (width, height, scale, max_side, expected) in
             [(1, 1000, 100, 360, (1, 360)), (1, 1000, 50, 360, (1, 360)), (1, 1000, 25, 360, (1, 250)), (13, 20, 50, 8, (5, 8)), (20, 13, 50, 8, (8, 5))]
@@ -756,10 +756,10 @@ mod tests {
     fn export_document_scales_and_flattens() {
         let doc = Document::with_background(
             "x",
-            photocraft_doc::Size::new(200, 100),
-            photocraft_doc::ColorMode::Rgb,
-            photocraft_doc::SampleType::U8,
-            photocraft_doc::Color::WHITE,
+            photoz_doc::Size::new(200, 100),
+            photoz_doc::ColorMode::Rgb,
+            photoz_doc::SampleType::U8,
+            photoz_doc::Color::WHITE,
         );
         let mut f = Map::new();
         f.insert("format".into(), json!("jpg"));
@@ -783,10 +783,10 @@ mod tests {
         for (src_h, want_h) in [(100u32, 50u32), (200, 100)] {
             let doc = Document::with_background(
                 "x",
-                photocraft_doc::Size::new(1, src_h),
-                photocraft_doc::ColorMode::Rgb,
-                photocraft_doc::SampleType::U8,
-                photocraft_doc::Color::WHITE,
+                photoz_doc::Size::new(1, src_h),
+                photoz_doc::ColorMode::Rgb,
+                photoz_doc::SampleType::U8,
+                photoz_doc::Color::WHITE,
             );
             let out = export_document(&doc, &f, None).unwrap();
             assert_eq!((out.size.width, out.size.height), (1, want_h), "1 × {src_h} at 50%");
@@ -802,7 +802,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn layered_preview_runs_outside_the_ui_frame() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 32, "height": 16})).unwrap();
         for _ in 0..33 {
             app.run("layer.new.layer", json!({})).unwrap();
@@ -842,14 +842,14 @@ mod tests {
 
         let tiff_fields = Map::from_iter([("format".into(), json!("tif")), ("scale".into(), json!(100))]);
         let proxy = preview_proxy(&doc, &tiff_fields).unwrap();
-        let options = photocraft_io::ExportOptions { tiff_layers: true, xmp: photocraft_io::XmpEmbed::None, ..Default::default() };
-        let actual_bytes = photocraft_io::export(&proxy, "estimate.tif", &options).unwrap().bytes.len();
+        let options = photoz_io::ExportOptions { tiff_layers: true, xmp: photoz_io::XmpEmbed::None, ..Default::default() };
+        let actual_bytes = photoz_io::export(&proxy, "estimate.tif", &options).unwrap().bytes.len();
         assert_eq!(estimate_native(&doc, &proxy, &tiff_fields), Some(scaled_estimate(actual_bytes, &doc, &proxy, &tiff_fields)));
     }
 
     #[test]
     fn switching_export_formats_uses_independent_quality_preferences() {
-        let prefs = photocraft_engine::prefs::Export { jpeg_quality: 43, webp_quality: 72, webp_lossless: false, ..Default::default() };
+        let prefs = photoz_engine::prefs::Export { jpeg_quality: 43, webp_quality: 72, webp_lossless: false, ..Default::default() };
         let mut fields = Map::new();
         set_format_defaults(&mut fields, "webp", &prefs);
         assert_eq!(fields["quality"], 72);
@@ -864,7 +864,7 @@ mod tests {
         assert_eq!(settings(&fields).jpeg_quality, Some(43));
         assert_eq!(settings(&fields).webp_quality, None);
 
-        set_format_defaults(&mut fields, "webp", &photocraft_engine::prefs::Export::default());
+        set_format_defaults(&mut fields, "webp", &photoz_engine::prefs::Export::default());
         assert!(settings(&fields).webp_lossless, "default WebP Quick Export mode is lossless");
         assert_eq!(settings(&fields).webp_quality, None);
     }
@@ -890,7 +890,7 @@ mod tests {
     /// for TGA.
     #[test]
     fn tga_settings_follow_the_bits_per_pixel() {
-        use photocraft_io::TgaBits;
+        use photoz_io::TgaBits;
         let mut f = Map::new();
         f.insert("format".into(), json!("tga"));
         assert_eq!(settings(&f).tga_bits, None, "no choice made");

@@ -7,11 +7,11 @@
 //! Normal mixes ink values linearly, as Photoshop does in CMYK, so it is worked out on the stored
 //! values and an opaque layer keeps them exactly.
 
-use photocraft_color::blend::BlendMode;
-use photocraft_color::{ColorMode, PixelFormat};
-use photocraft_doc::{Document, Layer, LayerContent};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use photoz_color::blend::BlendMode;
+use photoz_color::{ColorMode, PixelFormat};
+use photoz_doc::{Document, Layer, LayerContent};
+use photoz_geom::Rect;
+use photoz_raster::Surface;
 
 /// Process channels of a CMYK pixel.
 const INKS: usize = 4;

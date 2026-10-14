@@ -1,11 +1,11 @@
 //! Deterministic 24 MP blur/resize benchmark. Run with --release; no private photos needed.
-use photocraft_algo::{
+use photoz_algo::{
     FilterParams, apply_in,
     resample::{Resample, resize_surface_in_canvas},
 };
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use photoz_color::{ColorMode, PixelFormat, SampleType};
+use photoz_geom::Rect;
+use photoz_raster::Surface;
 use std::time::Instant;
 fn main() {
     let bounds = Rect::new(0, 0, 6000, 4000);

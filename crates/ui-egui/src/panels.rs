@@ -1,14 +1,14 @@
 //! Chrome around the canvas: title bar, options bar, toolbar, status bar, dock cards, Properties.
 
 use egui::{Align2, Color32, CornerRadius, Pos2, Rect, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
-use photocraft_color::BlendMode;
-use photocraft_doc::{Layer, LayerContent, LayerId};
+use photoz_color::BlendMode;
+use photoz_doc::{Layer, LayerContent, LayerId};
 use serde_json::{Value, json};
 
 use crate::mask_thumbs_ui::MaskKind;
 use crate::state::Tool;
 use crate::theme::{self, Tokens};
-use crate::{PhotocraftApp, icons, widgets};
+use crate::{PhotozApp, icons, widgets};
 
 // ----------------------------------------------------------------------------- toolbar
 
@@ -78,7 +78,7 @@ fn visible_sections(hidden: &[String]) -> Vec<Vec<(usize, Vec<Tool>)>> {
     sections
 }
 
-pub fn toolbar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn toolbar(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let (w1, bx, m) = if t.pro { (40.0, 30.0, 5i8) } else { (50.0, 36.0, 7i8) };
     let sections = visible_sections(&app.session.prefs().toolbar.hidden);
@@ -419,7 +419,7 @@ fn chips_height(pro: bool, studio: bool, wide: bool) -> f32 {
 /// Photoshop's foreground / background colour chips: the Default Colors (D) and Switch Colors (X)
 /// icons above them, the foreground chip over the background one, all centred in the toolbar
 /// column and kept inside it.
-fn color_chips(app: &mut PhotocraftApp, ui: &mut egui::Ui, two_columns: bool) {
+fn color_chips(app: &mut PhotozApp, ui: &mut egui::Ui, two_columns: bool) {
     let t = Tokens::get(ui.ctx());
     // Studio themes: round chips stacked vertically, the controls below them.
     let studio = t.round_chips;
@@ -558,11 +558,11 @@ fn color_chips(app: &mut PhotocraftApp, ui: &mut egui::Ui, two_columns: bool) {
 // ----------------------------------------------------------------------------- title bar
 
 /// The app's top bar: brand mark, menus, the document title and the workspace controls. With
-/// [`PhotocraftApp::custom_titlebar`] (Windows and Linux) it is also the window's title bar, as in
+/// [`PhotozApp::custom_titlebar`] (Windows and Linux) it is also the window's title bar, as in
 /// Photoshop on Windows: the caption buttons take its ends (`titlebar`). With the system
 /// title bar (Windows and Linux, `system_title_bar`) the OS draws its own icon and title, so the
 /// in-app bar shows menus and workspace controls only: no brand mark, no centred title.
-pub fn title_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn title_bar(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let custom = app.custom_titlebar;
     let system = system_title_bar(app);
@@ -596,7 +596,7 @@ pub fn title_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 let max = ui.ctx().input(|i| i.viewport().maximized.unwrap_or(false));
                 ui.ctx().send_viewport_cmd(egui::ViewportCommand::Maximized(!max));
             }
-            let title = app.session.active().map(|d| format!("{}{}", d.doc.name, if d.is_dirty() { "  •" } else { "" })).unwrap_or_else(|| "PhotoCraft".into());
+            let title = app.session.active().map(|d| format!("{}{}", d.doc.name, if d.is_dirty() { "  •" } else { "" })).unwrap_or_else(|| "PhotoZ".into());
             // The menus and the far-end controls are laid out first; the title is centred in
             // whatever room is left between them (`free`, left to right: menus then controls, or
             // controls then menus in a right-to-left UI), shortened or dropped rather than drawn
@@ -668,9 +668,9 @@ pub fn title_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                         app.ui.palette_open = !app.ui.palette_open;
                     }
                     let (theme_icon, appearance_label) = match app.session.prefs().interface.appearance_mode {
-                        photocraft_engine::prefs::AppearanceMode::Auto => ("monitor", tl!("Auto")),
-                        photocraft_engine::prefs::AppearanceMode::Dark => ("moon", tl!("Dark")),
-                        photocraft_engine::prefs::AppearanceMode::Light => ("sun", tl!("Light")),
+                        photoz_engine::prefs::AppearanceMode::Auto => ("monitor", tl!("Auto")),
+                        photoz_engine::prefs::AppearanceMode::Dark => ("moon", tl!("Dark")),
+                        photoz_engine::prefs::AppearanceMode::Light => ("sun", tl!("Light")),
                     };
                     let appearance_tip = format!("{}: {}", tl!("Appearance Mode"), appearance_label);
                     if icons_shown >= 2 {
@@ -685,13 +685,13 @@ pub fn title_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                     if ui.available_width() >= DISCORD_ROOM {
                         let discord = egui::Button::image_and_text(
                             icons::image("message-square", 14.0, t.text_dim),
-                            egui::RichText::new(tl!("Discord")).color(t.text_dim).size(12.0),
+                            egui::RichText::new(tl!("Help")).color(t.text_dim).size(12.0),
                         )
                         .frame(false);
                         if ui
                             .add(discord)
                             .on_hover_text({
-                                let template = "Join the ArtCraft Discord ({url})";
+                                let template = "Get help on GitHub ({url})";
                                 crate::i18n::fmt(tl!(template), &[("url", crate::links::DISCORD)])
                             })
                             .clicked()
@@ -732,20 +732,20 @@ pub fn title_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// but keeps the in-app brand mark and centred title, so it never counts as system mode here; nor
 /// does the web build (the browser tab has no document title), nor an embedder or the snapshot
 /// example that never turned the preference on.
-pub fn system_title_bar(app: &PhotocraftApp) -> bool {
+pub fn system_title_bar(app: &PhotozApp) -> bool {
     !app.custom_titlebar && app.session.prefs().interface.system_title_bar && !cfg!(any(target_os = "macos", target_arch = "wasm32"))
 }
 
 /// The OS window title: the active document's name suffixed with the app name (a `*` prefix
 /// marks unsaved changes, like the `•` in the app-drawn title), or just the app name with no
 /// document open.
-pub fn window_title(app: &PhotocraftApp) -> String {
-    app.session.active().map(|d| format!("{}{} \u{2014} PhotoCraft", if d.is_dirty() { "*" } else { "" }, d.doc.name)).unwrap_or_else(|| "PhotoCraft".into())
+pub fn window_title(app: &PhotozApp) -> String {
+    app.session.active().map(|d| format!("{}{} \u{2014} PhotoZ", if d.is_dirty() { "*" } else { "" }, d.doc.name)).unwrap_or_else(|| "PhotoZ".into())
 }
 
 /// Keep the OS window title (and the taskbar / Alt-Tab entry) on the active file. Sends
 /// `ViewportCommand::Title` only when the title changed since the last frame.
-pub fn sync_window_title(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn sync_window_title(app: &mut PhotozApp, ctx: &egui::Context) {
     let want = window_title(app);
     if app.last_window_title != want {
         app.last_window_title = want.clone();
@@ -793,8 +793,8 @@ mod title_tests {
         assert_eq!(title_x(400.0, f32::INFINITY, 1300.0, 60.0), None);
     }
 
-    fn app(custom_titlebar: bool) -> crate::PhotocraftApp {
-        let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+    fn app(custom_titlebar: bool) -> crate::PhotozApp {
+        let mut app = crate::PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.custom_titlebar = custom_titlebar;
         // The preference that makes the shell launch without its own title bar.
         app.session.edit_prefs(|p| p.interface.system_title_bar = !custom_titlebar);
@@ -804,32 +804,32 @@ mod title_tests {
     #[test]
     fn without_the_preference_the_mark_stays() {
         // The default (e.g. the web build or the snapshot example): no custom bar, no preference.
-        let app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let app = crate::PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         assert!(!system_title_bar(&app));
     }
 
-    fn open_named(app: &mut crate::PhotocraftApp, name: &str) {
+    fn open_named(app: &mut crate::PhotozApp, name: &str) {
         app.session.add_document(
-            photocraft_doc::Document::new(name, photocraft_doc::Size::new(4, 4), photocraft_doc::ColorMode::Rgb, photocraft_doc::SampleType::U8),
+            photoz_doc::Document::new(name, photoz_doc::Size::new(4, 4), photoz_doc::ColorMode::Rgb, photoz_doc::SampleType::U8),
             None,
         );
     }
 
     #[test]
     fn window_title_with_no_document_is_the_app_name() {
-        assert_eq!(window_title(&app(true)), "PhotoCraft");
+        assert_eq!(window_title(&app(true)), "PhotoZ");
     }
 
     #[test]
     fn window_title_follows_the_active_file() {
         let mut app = app(true);
         open_named(&mut app, "foo.psd");
-        assert_eq!(window_title(&app), "foo.psd \u{2014} PhotoCraft");
+        assert_eq!(window_title(&app), "foo.psd \u{2014} PhotoZ");
         // Unsaved changes gain a `*` prefix, like the `•` in the app-drawn title.
         if let Some(st) = app.session.active_mut() {
             st.revision += 1;
         }
-        assert_eq!(window_title(&app), "*foo.psd \u{2014} PhotoCraft");
+        assert_eq!(window_title(&app), "*foo.psd \u{2014} PhotoZ");
     }
 
     #[test]
@@ -838,7 +838,7 @@ mod title_tests {
             let mut app = app(custom);
             open_named(&mut app, "foo.psd");
             let ctx = egui::Context::default();
-            crate::PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
+            crate::PhotozApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
             let out = ctx.run_ui(egui::RawInput::default(), |ui| super::title_bar(&mut app, ui));
             let mut out = out;
             out.textures_delta.clear();
@@ -865,13 +865,13 @@ mod title_tests {
     fn sync_window_title_sends_only_on_change() {
         let mut app = app(true);
         let ctx = egui::Context::default();
-        crate::PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
+        crate::PhotozApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
         super::sync_window_title(&mut app, &ctx);
-        assert_eq!(app.last_window_title, "PhotoCraft");
+        assert_eq!(app.last_window_title, "PhotoZ");
         let mut out = ctx.run_ui(egui::RawInput::default(), |_| {});
         out.textures_delta.clear();
         let cmds = out.viewport_output.remove(&egui::ViewportId::ROOT).map(|v| v.commands).unwrap_or_default();
-        assert!(cmds.iter().any(|c| matches!(c, egui::ViewportCommand::Title(t) if t == "PhotoCraft")), "{cmds:?}");
+        assert!(cmds.iter().any(|c| matches!(c, egui::ViewportCommand::Title(t) if t == "PhotoZ")), "{cmds:?}");
         // Same document state again: the cached title stops a repeat command.
         super::sync_window_title(&mut app, &ctx);
         let mut out = ctx.run_ui(egui::RawInput::default(), |_| {});
@@ -880,7 +880,7 @@ mod title_tests {
         assert!(!cmds.iter().any(|c| matches!(c, egui::ViewportCommand::Title(_))), "repeat Title: {cmds:?}");
         open_named(&mut app, "foo.psd");
         super::sync_window_title(&mut app, &ctx);
-        assert_eq!(app.last_window_title, "foo.psd \u{2014} PhotoCraft");
+        assert_eq!(app.last_window_title, "foo.psd \u{2014} PhotoZ");
     }
 }
 
@@ -920,7 +920,7 @@ fn options_bar_height(pro: bool, narrow: bool) -> f32 {
     }
 }
 
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn options_bar(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let narrow = app.session.prefs().workspace.narrow_options_bar();
     egui::Panel::top("options_bar")
@@ -1045,7 +1045,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                         widgets::vline(ui, 22.0);
                         if !t.pro {
                             opt_label(ui, tl!("Size"));
-                            widgets::value_field(ui, &mut b.size, 1.0..=photocraft_engine::paint::MAX_BRUSH_SIZE, "px", 76.0);
+                            widgets::value_field(ui, &mut b.size, 1.0..=photoz_engine::paint::MAX_BRUSH_SIZE, "px", 76.0);
                             widgets::vline(ui, 22.0);
                         }
                         opt_label(ui, tl!("Mode"));
@@ -1371,7 +1371,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                             ui.set_min_width(200.0);
                             let mut section = |ui: &mut egui::Ui, title: &str, prefix: &str| {
                                 ui.label(egui::RichText::new(tl!(&title)).small().color(t.text_dim));
-                                for c in photocraft_engine::command_specs().iter().filter(|c| c.id.starts_with(prefix)) {
+                                for c in photoz_engine::command_specs().iter().filter(|c| c.id.starts_with(prefix)) {
                                     if ui.add_enabled(app.session.is_enabled(c.id), egui::Button::new(tl!(c.label))).clicked() {
                                         let _ = app.run(c.id, json!({}));
                                         ui.close();
@@ -1599,7 +1599,7 @@ pub fn status_bar_heights(t: &Tokens) -> (f32, f32) {
     if t.pro { (24.0, 18.0) } else { (30.0, 22.0) }
 }
 
-pub fn status_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn status_bar(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     egui::Panel::bottom("status_bar")
         .exact_size(status_bar_heights(&t).0)
@@ -1661,7 +1661,7 @@ pub fn status_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 // ----------------------------------------------------------------------------- dock
 
-pub fn right_dock(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn right_dock(app: &mut PhotozApp, ui: &mut egui::Ui) {
     // Even legacy destinations must discard gestures captured by an earlier workspace.
     let customized = crate::panel_docking::show(app, ui);
     let t = Tokens::get(ui.ctx());
@@ -1723,7 +1723,7 @@ pub fn request_dock_width(ctx: &egui::Context, w: f32) {
     ctx.data_mut(|d| d.insert_temp(dock_width_id(), w));
 }
 
-fn dock_panels(app: &mut PhotocraftApp, ui: &mut egui::Ui, p: &crate::state::Panels, t: &Tokens) {
+fn dock_panels(app: &mut PhotozApp, ui: &mut egui::Ui, p: &crate::state::Panels, t: &Tokens) {
     use crate::dock::Group;
     // Floating in Studio, Properties docks only in Pro (Photoshop).
     let shown: Vec<Group> = [
@@ -1752,7 +1752,7 @@ fn dock_panels(app: &mut PhotocraftApp, ui: &mut egui::Ui, p: &crate::state::Pan
 }
 
 /// One dock group's tab content; `dock` bounds it and scrolls it when it's taller.
-pub(crate) fn dock_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, group: crate::dock::Group, tab: usize) {
+pub(crate) fn dock_body(app: &mut PhotozApp, ui: &mut egui::Ui, group: crate::dock::Group, tab: usize) {
     use crate::dock::Group;
     let pro = Tokens::get(ui.ctx()).pro;
     match (group, tab) {
@@ -1778,7 +1778,7 @@ pub(crate) fn dock_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, group: crate
 }
 
 /// Photoshop's Info panel: colour under the pointer (RGB and CMYK), position, selection size.
-fn info_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn info_panel(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let Some(st) = app.session.active() else {
         empty(ui, tl!("No document"));
@@ -1791,7 +1791,7 @@ fn info_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let fx = move |px: f64| units.format(px, dpi, size.width as f64);
     let units_y = app.session.prefs().units_and_rulers.clone();
     let fy = move |px: f64| units_y.format(px, dpi, size.height as f64);
-    let sel = st.doc.selection.as_ref().map(photocraft_compose::bounds::content_bounds);
+    let sel = st.doc.selection.as_ref().map(photoz_compose::bounds::content_bounds);
     let pos = app
         .hover_doc
         .map(|p| (p[0].floor() as i32, p[1].floor() as i32))
@@ -1825,7 +1825,7 @@ fn info_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         row(&mut cols[0], "B:", rgba.map_or_else(dash, |c| q(c[2]).to_string()));
         // Naive device CMYK (no ICC profile yet), in percent like Photoshop's readout. The Color
         // Sampler readout uses the same conversion (`sampler_cmds::device_cmyk`).
-        let cmyk = rgba.map(|c| photocraft_engine::sampler_cmds::device_cmyk(c[0], c[1], c[2]));
+        let cmyk = rgba.map(|c| photoz_engine::sampler_cmds::device_cmyk(c[0], c[1], c[2]));
         for (i, k) in ["C:", "M:", "Y:", "K:"].iter().enumerate() {
             row(&mut cols[1], k, cmyk.map_or_else(dash, |c| format!("{}%", c[i])));
         }
@@ -1877,7 +1877,7 @@ fn info_panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     }
 }
 
-fn navigator(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn navigator(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let Some(idx) = app.session.active_index() else {
         empty(ui, tl!("No document"));
@@ -1944,7 +1944,7 @@ fn navigator(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
-            let set = |app: &mut PhotocraftApp, zoom: f32| {
+            let set = |app: &mut PhotozApp, zoom: f32| {
                 app.ui.views[idx].zoom = crate::zoom_levels::clamp(zoom, v.doc_size);
                 app.ui.views[idx].fit_pending = false;
             };
@@ -2020,7 +2020,7 @@ mod navigator_wheel_tests {
     use super::*;
     use egui::{Event, Modifiers, MouseWheelUnit, RawInput, TouchPhase};
 
-    fn frame(app: &mut PhotocraftApp, ctx: &egui::Context, pointer: Pos2, wheel: f32) {
+    fn frame(app: &mut PhotozApp, ctx: &egui::Context, pointer: Pos2, wheel: f32) {
         let mut events = vec![Event::PointerMoved(pointer)];
         if wheel != 0.0 {
             events.push(Event::MouseWheel { unit: MouseWheelUnit::Line, delta: vec2(0.0, wheel), phase: TouchPhase::Move, modifiers: Modifiers::NONE });
@@ -2032,13 +2032,13 @@ mod navigator_wheel_tests {
 
     #[test]
     fn navigator_wheel_changes_zoom_only_when_over_preview() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
         app.sync_views();
         app.ui.views[0].zoom = 1.0;
         app.ui.views[0].fit_pending = false;
         let ctx = egui::Context::default();
-        PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
+        PhotozApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
         crate::wheel_nav::configure(&ctx);
         frame(&mut app, &ctx, pos2(50.0, 55.0), 0.0);
         let center = app.ui.views[0].center;
@@ -2058,17 +2058,17 @@ mod navigator_wheel_tests {
     #[test]
     fn navigator_zoom_row_is_one_line_and_its_buttons_step_the_zoom() {
         use egui_kittest::kittest::Queryable;
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 100})).unwrap();
         app.sync_views();
         app.ui.views[0].zoom = 1.0;
         app.ui.views[0].fit_pending = false;
-        let mut h = egui_kittest::Harness::builder().with_size(vec2(360.0, 300.0)).build_ui_state(|ui, app: &mut PhotocraftApp| navigator(app, ui), app);
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(360.0, 300.0)).build_ui_state(|ui, app: &mut PhotozApp| navigator(app, ui), app);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);
         h.run_steps(4);
         let row = last_navigator_controls(&h.ctx).expect("the zoom row");
         assert!(row.height() <= NAV_ROW_H + 14.0, "one row (with the gap above it): {row:?}");
-        let zoom = |h: &egui_kittest::Harness<'_, PhotocraftApp>| h.state().ui.views[0].zoom;
+        let zoom = |h: &egui_kittest::Harness<'_, PhotozApp>| h.state().ui.views[0].zoom;
         h.get_by_label("Zoom In").click();
         h.run_steps(2);
         assert!((zoom(&h) - crate::zoom_levels::step(1.0, 1, [200, 100])).abs() < 1e-4, "{}", zoom(&h));
@@ -2090,14 +2090,14 @@ fn empty(ui: &mut egui::Ui, s: &str) {
 
 /// The Color tab of the themes other than Photoshop's: the same spectrum field (chips, saturation
 /// and brightness field, hue strip and readout) with HSB sliders under it (#4367).
-fn color_picker(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn color_picker(app: &mut PhotozApp, ui: &mut egui::Ui) {
     color_field(app, ui);
     ui.add_space(8.0);
     hsb_sliders(app, ui);
 }
 
 /// Hue, Saturation and Brightness sliders for the foreground colour.
-fn hsb_sliders(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn hsb_sliders(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let fg = app.session.tools.foreground;
     // Keep the last edited HSB while it still gives the foreground: black and greys have no hue or
     // saturation of their own, so recomputing them from RGB would reset what was just typed to 0.
@@ -2185,7 +2185,7 @@ fn opacity_row_layout(available: f32, label_width: f32, gap: f32) -> (f32, bool)
     ((available - reserved).max(40.0), show_label)
 }
 
-fn layers(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn layers(app: &mut PhotozApp, ui: &mut egui::Ui) {
     // A new active layer opens its parent groups and is scrolled into view (#152).
     let reveal = crate::layer_reveal::track(app, ui.ctx());
     let Some(st) = app.session.active() else {
@@ -2358,7 +2358,7 @@ fn layers(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             let mut drawn: Vec<(LayerId, Rect)> = Vec::new();
             for &(depth, l) in &rows {
                 // Select › Isolate Layers.
-                if !photocraft_engine::select_extra_cmds::isolation_shows(&doc, &isolated, l.id) {
+                if !photoz_engine::select_extra_cmds::isolation_shows(&doc, &isolated, l.id) {
                     continue;
                 }
                 if !filter.is_empty() {
@@ -2511,7 +2511,7 @@ fn layers(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         // Opens on the press like Photoshop's: drag onto an item and release to choose it (#2071).
         crate::press_menu::show(&adj, |ui, menu| {
             ui.set_min_width(190.0);
-            for c in photocraft_engine::command_specs().iter().filter(|c| c.id.starts_with("layer.newAdjustmentLayer.")) {
+            for c in photoz_engine::command_specs().iter().filter(|c| c.id.starts_with("layer.newAdjustmentLayer.")) {
                 if menu.item(ui, tl!(c.label).trim_end_matches('…')) {
                     actions.push((c.id.into(), json!({})));
                 }
@@ -2743,10 +2743,10 @@ fn paint_clipping_indicator(painter: &egui::Painter, at: Pos2, color: Color32) {
 
 #[allow(clippy::too_many_arguments)]
 fn layer_row(
-    app: &mut PhotocraftApp,
+    app: &mut PhotozApp,
     ctx: &egui::Context,
     ui: &mut egui::Ui,
-    doc: &photocraft_doc::Document,
+    doc: &photoz_doc::Document,
     l: &Layer,
     depth: usize,
     row: RowSel,
@@ -2931,9 +2931,9 @@ fn layer_row(
         let on_thumb = pos.is_some_and(|p| thumb.expand(2.0).contains(p));
         let on_vector = pos.and_then(|p| masks.hit(p)) == Some(crate::mask_thumbs_ui::MaskKind::Vector);
         // Clicking the layer thumbnail leaves mask view (#196).
-        let viewing = app.session.active().and_then(photocraft_engine::mask_view_cmds::current).is_some_and(|v| v.layer == l.id);
+        let viewing = app.session.active().and_then(photoz_engine::mask_view_cmds::current).is_some_and(|v| v.layer == l.id);
         if on_thumb && viewing {
-            actions.push((photocraft_engine::mask_view_cmds::ID.into(), json!({"layer": l.id.0, "mode": "off"})));
+            actions.push((photoz_engine::mask_view_cmds::ID.into(), json!({"layer": l.id.0, "mode": "off"})));
         }
         let content_less = matches!(l.content, LayerContent::Adjustment(_) | LayerContent::Fill(_));
         if on_vector {
@@ -3033,7 +3033,7 @@ fn layer_thumb_fit(cell: Rect, w: u32, h: u32) -> (Rect, Rect) {
     crate::channels_panel::fit_thumb(cell, w, h)
 }
 
-fn draw_layer_thumb(app: &mut PhotocraftApp, ctx: &egui::Context, ui: &egui::Ui, doc: &photocraft_doc::Document, l: &Layer, rect: Rect, selected: bool) {
+fn draw_layer_thumb(app: &mut PhotozApp, ctx: &egui::Context, ui: &egui::Ui, doc: &photoz_doc::Document, l: &Layer, rect: Rect, selected: bool) {
     let t = Tokens::get(ctx);
     let p = ui.painter();
     match &l.content {
@@ -3049,7 +3049,7 @@ fn draw_layer_thumb(app: &mut PhotocraftApp, ctx: &egui::Context, ui: &egui::Ui,
         }
         // Gradient fills show the gradient itself (Photoshop); solid ones their colour.
         LayerContent::Fill(f) if crate::gradient_ui::paint_thumbnail(ui, l.id, f, rect) => {}
-        LayerContent::Fill(photocraft_doc::Fill::Solid(color)) => {
+        LayerContent::Fill(photoz_doc::Fill::Solid(color)) => {
             crate::solid_fill_ui::paint_thumbnail(ui, crate::solid_fill_ui::thumbnail_color(app, doc.id, l.id, *color), rect);
         }
         LayerContent::Fill(_) => {
@@ -3078,11 +3078,11 @@ fn draw_layer_thumb(app: &mut PhotocraftApp, ctx: &egui::Context, ui: &egui::Ui,
     crate::smart_ui::thumb_badge(ui, l, rect);
 }
 
-fn channels(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn channels(app: &mut PhotozApp, ui: &mut egui::Ui) {
     crate::channels_panel::show(app, ui);
 }
 
-fn history(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn history(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let Some(st) = app.session.active() else {
         empty(ui, tl!("No document"));
@@ -3187,7 +3187,7 @@ fn history(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// name: a click returns to the snapshot (a new state), a double-click or right-click › Rename…
 /// edits the name in place (Enter or a click elsewhere keeps it, Escape cancels), and
 /// right-click › Delete removes it. Returns the command a row asks for.
-fn snapshot_rows(app: &mut PhotocraftApp, ui: &mut egui::Ui) -> Option<(&'static str, Value)> {
+fn snapshot_rows(app: &mut PhotozApp, ui: &mut egui::Ui) -> Option<(&'static str, Value)> {
     let t = Tokens::get(ui.ctx());
     let st = app.session.active()?;
     let (doc_id, snaps) = (st.doc.id, st.snapshots.clone());
@@ -3260,7 +3260,7 @@ fn snapshot_rows(app: &mut PhotocraftApp, ui: &mut egui::Ui) -> Option<(&'static
 
 /// Floating Properties card anchored to the canvas' top-right corner. It shows the same content as
 /// the docked panel (`properties_body`): document, layer, adjustment and mask properties.
-pub fn properties_window(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn properties_window(app: &mut PhotozApp, ctx: &egui::Context) {
     if app.ui.docking.is_some() {
         return;
     }
@@ -3318,7 +3318,7 @@ pub fn properties_window(app: &mut PhotocraftApp, ctx: &egui::Context) {
     }
 }
 
-fn adjustment_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, id: LayerId, adj: &photocraft_doc::Adjustment) {
+fn adjustment_controls(app: &mut PhotozApp, ui: &mut egui::Ui, id: LayerId, adj: &photoz_doc::Adjustment) {
     crate::adjust_editors::layer_editor(app, ui, id, adj);
     ui.add_space(6.0);
     let layer = app.session.active().and_then(|s| s.doc.layer(id).map(|l| (l.visible, l.clipped)));
@@ -3344,7 +3344,7 @@ fn adjustment_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, id: LayerId, 
     }
 }
 
-fn layer_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
+fn layer_controls(app: &mut PhotozApp, ui: &mut egui::Ui, layer: &Layer) {
     let t = Tokens::get(ui.ctx());
     if let Some(s) = layer.surface() {
         let b = app.cached_bounds(layer.id.0, s);
@@ -3370,12 +3370,12 @@ fn layer_controls(app: &mut PhotocraftApp, ui: &mut egui::Ui, layer: &Layer) {
 }
 
 /// Docked Properties body (Pro theme).
-fn properties_body(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn properties_body(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let identity = app.session.active().map(|st| (st.doc.id, st.active_layer, app.ui.mask_target, app.ui.vector_mask_target, app.ui.properties_layer));
     ui.push_id(("properties-target", identity), |ui| properties_body_inner(app, ui));
 }
 
-fn properties_body_inner(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn properties_body_inner(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let Some(st) = app.session.active() else {
         empty(ui, tl!("No properties"));
@@ -3425,7 +3425,7 @@ fn properties_body_inner(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         // Transform, Align, the kind's sections and Quick Actions.
         crate::layer_props_ui::properties(app, ui, layer);
     } else {
-        if matches!(layer.content, LayerContent::Fill(photocraft_doc::Fill::Gradient { .. })) {
+        if matches!(layer.content, LayerContent::Fill(photoz_doc::Fill::Gradient { .. })) {
             crate::gradient_ui::properties(app, ui, layer);
             ui.add_space(6.0);
         }
@@ -3440,7 +3440,7 @@ fn properties_body_inner(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 }
 
 /// Photoshop's Adjustments panel: a grid of one-click adjustment layers.
-fn adjustments_grid(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn adjustments_grid(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     ui.label(RichText::new(tl!("Add an adjustment")).color(t.text_dim));
     ui.add_space(4.0);
@@ -3479,7 +3479,7 @@ fn adjustments_grid(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 
 /// The Color panel's foreground and background chips. A click picks the colour the field edits,
 /// framed; a double-click opens the Color Picker on it.
-fn field_chips(app: &mut PhotocraftApp, ui: &mut egui::Ui, chips: Rect) {
+fn field_chips(app: &mut PhotozApp, ui: &mut egui::Ui, chips: Rect) {
     let t = Tokens::get(ui.ctx());
     let bgr = Rect::from_min_size(chips.min + vec2(13.0, 13.0), vec2(22.0, 22.0));
     let fgr = Rect::from_min_size(chips.min + vec2(3.0, 3.0), vec2(22.0, 22.0));
@@ -3536,7 +3536,7 @@ fn field_hsva(mut hsva: egui::ecolor::Hsva, remembered: (f32, f32)) -> egui::eco
 }
 
 /// Photoshop Color panel: saturation/brightness field + hue strip, drawn as shaded meshes.
-fn color_field(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn color_field(app: &mut PhotozApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let bg_active = app.ui.color_panel.background;
     let key = egui::Id::new(("color-field-hue", bg_active));
@@ -3743,7 +3743,7 @@ fn brush_tip(p: &egui::Painter, c: egui::Pos2, rad: f32, hardness: f32, color: C
 /// The Brush's or Pencil's Mode dropdown: the blend modes, with Photoshop's painting-only Clear
 /// after Dissolve (#3439). Clear erases with the brush (`clear`); it shows while chosen, or while
 /// `~` is held (`held`). The wheel over it steps the mode, as over the Layers panel's (#2061).
-fn paint_mode_dropdown(ui: &mut egui::Ui, id: &str, b: &mut photocraft_engine::BrushSettings, clear: &mut bool, held: bool) {
+fn paint_mode_dropdown(ui: &mut egui::Ui, id: &str, b: &mut photoz_engine::BrushSettings, clear: &mut bool, held: bool) {
     let mut opts: Vec<(Option<BlendMode>, &str)> = BlendMode::LAYER_MODES.iter().map(|m| (Some(*m), m.label())).collect();
     let at = opts.iter().position(|o| o.0 == Some(BlendMode::Dissolve)).map_or(opts.len(), |i| i + 1);
     opts.insert(at, (None, "Clear"));
@@ -3757,7 +3757,7 @@ fn paint_mode_dropdown(ui: &mut egui::Ui, id: &str, b: &mut photocraft_engine::B
 }
 
 /// Options-bar Smoothing % (the brush's stroke smoothing; the live stroke and the commit use it).
-fn smoothing_field(ui: &mut egui::Ui, b: &mut photocraft_engine::BrushSettings, width: f32) {
+fn smoothing_field(ui: &mut egui::Ui, b: &mut photoz_engine::BrushSettings, width: f32) {
     let mut sm = (b.smoothing.amount * 100.0).round();
     if widgets::value_field(ui, &mut sm, 0.0..=100.0, "%", width).changed() {
         b.smoothing.enabled = true;
@@ -3767,7 +3767,7 @@ fn smoothing_field(ui: &mut egui::Ui, b: &mut photocraft_engine::BrushSettings, 
 
 /// Options-bar gear beside Smoothing: Photoshop's smoothing options popup, edited on the brush
 /// like the Smoothing % (so they stay per tool and reach the live stroke and the commit).
-fn smoothing_options(ui: &mut egui::Ui, b: &mut photocraft_engine::BrushSettings) {
+fn smoothing_options(ui: &mut egui::Ui, b: &mut photoz_engine::BrushSettings) {
     let resp = icons::button(ui, "settings", 24.0, false, tl!("Set additional smoothing options"));
     let resp = crate::brush_picker::named(resp, "Set additional smoothing options");
     egui::Popup::from_toggle_button_response(&resp).close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside).show(|ui| {
@@ -3781,7 +3781,7 @@ fn smoothing_options(ui: &mut egui::Ui, b: &mut photocraft_engine::BrushSettings
 
 /// Options-bar brush chip: a click shows or hides Photoshop's Brush Preset picker below it (size,
 /// hardness, the preset library), the one a right-click on the canvas opens.
-fn brush_preset_chip(ui: &mut egui::Ui, b: &photocraft_engine::BrushSettings, state: &mut crate::state::UiState) {
+fn brush_preset_chip(ui: &mut egui::Ui, b: &photoz_engine::BrushSettings, state: &mut crate::state::UiState) {
     let t = Tokens::get(ui.ctx());
     let (r, _) = ui.allocate_exact_size(vec2(44.0, 30.0), Sense::hover());
     let resp = ui.interact(r, crate::brush_picker::chip_id(), Sense::click());
@@ -3816,7 +3816,7 @@ fn layer_drop_payload(dragged: u64, target: LayerId, position: &str, selected: &
 
 /// Would this drop move the Background off the bottom, or put a layer below it? Photoshop
 /// refuses both (no drop indicator); ⌥-dragging the Background still copies it above.
-fn background_drop_refused(doc: &photocraft_doc::Document, payload: &Value, target: LayerId, position: &str, copy: bool) -> bool {
+fn background_drop_refused(doc: &photoz_doc::Document, payload: &Value, target: LayerId, position: &str, copy: bool) -> bool {
     let Some(bg) = doc.layers.first().filter(|b| crate::doc_props_ui::is_background(doc, b)).map(|b| b.id) else { return false };
     let moves_bg =
         !copy && (payload["layer"].as_u64() == Some(bg.0) || payload["layers"].as_array().is_some_and(|a| a.iter().any(|v| v.as_u64() == Some(bg.0))));
@@ -3827,7 +3827,7 @@ fn background_drop_refused(doc: &photocraft_doc::Document, payload: &Value, targ
 /// release the layers stay put and copies land there instead (Photoshop).
 /// Multi-layer moves are atomic (one undo step), using the engine's stable document order.
 fn layer_drag_and_drop(
-    app: &PhotocraftApp,
+    app: &PhotozApp,
     ctx: &egui::Context,
     ui: &egui::Ui,
     l: &Layer,
@@ -3923,7 +3923,7 @@ fn layer_drag_and_drop(
 /// with ⌥ held on release (Photoshop), a move without. A multi-selection dropped on the row it
 /// was grabbed from is left alone: the engine can only copy it beside each of its own layers.
 fn layer_drop_zone(
-    app: &PhotocraftApp,
+    app: &PhotozApp,
     ctx: &egui::Context,
     ui: &egui::Ui,
     zone: Rect,
@@ -3990,7 +3990,7 @@ fn start_fx_drag(ctx: &egui::Context, layer: LayerId, effect: Option<usize>) {
 }
 
 /// While effects are dragged: their name by the pointer, and the copy cursor while ⌥ is held.
-fn fx_drag_feedback(ctx: &egui::Context, doc: &photocraft_doc::Document) {
+fn fx_drag_feedback(ctx: &egui::Context, doc: &photoz_doc::Document) {
     let Some((from, effect)) = ctx.data(|d| d.get_temp::<FxDrag>(fx_drag_key())) else { return };
     let Some(p) = ctx.input(|i| i.pointer.interact_pos()) else { return };
     let label = match effect {
@@ -4032,7 +4032,7 @@ fn fx_drop(ctx: &egui::Context, ui: &egui::Ui, l: &Layer, rect: Rect, actions: &
 
 /// Photoshop shows a layer's effects as indented sub-rows ("Effects", then each effect). The eye
 /// on "Effects" shows or hides them all, the eye on an effect's row just that one (#1622).
-fn effect_rows(app: &mut PhotocraftApp, ui: &mut egui::Ui, l: &Layer, depth: usize, actions: &mut Vec<(String, Value)>) {
+fn effect_rows(app: &mut PhotozApp, ui: &mut egui::Ui, l: &Layer, depth: usize, actions: &mut Vec<(String, Value)>) {
     let t = Tokens::get(ui.ctx());
     let indent = 30.0 + depth as f32 * 14.0 + 34.0;
     let mut rows: Vec<(String, bool, Option<&'static str>)> = vec![("Effects".into(), l.effects.enabled, None)];
@@ -4097,7 +4097,7 @@ fn effect_rows(app: &mut PhotocraftApp, ui: &mut egui::Ui, l: &Layer, depth: usi
 }
 
 /// New / add / subtract / intersect selection buttons (shared by selection tools).
-fn selection_mode_buttons(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+fn selection_mode_buttons(app: &mut PhotozApp, ui: &mut egui::Ui) {
     ui.spacing_mut().item_spacing.x = 2.0;
     for (i, (icon, tip)) in [
         ("square", tl!("New selection").to_string()),
@@ -4124,11 +4124,11 @@ mod symmetry_theme_tests {
     fn brush_pencil_and_eraser_expose_symmetry_menu_in_every_theme() {
         for kind in crate::theme::ThemeKind::ALL {
             for tool in [Tool::Brush, Tool::Pencil, Tool::Eraser] {
-                let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+                let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
                 app.run("file.new", json!({"width": 80, "height": 80})).unwrap();
                 app.ui.tool = tool;
                 let mut h = Harness::builder().with_size(vec2(1600.0, 300.0)).build_ui_state(|ui, app| options_bar(app, ui), app);
-                PhotocraftApp::setup_context(&h.ctx, kind);
+                PhotozApp::setup_context(&h.ctx, kind);
                 h.run_steps(4);
                 assert!(h.query_by_label("Set painting symmetry options").is_some(), "missing symmetry menu in {:?} for {:?}", kind, tool);
             }
@@ -4168,7 +4168,7 @@ mod color_tests {
     }
 
     /// Click the hex field, select its text and type `text` one key per frame.
-    fn type_hex(h: &mut egui_kittest::Harness<'static, PhotocraftApp>, text: &str) {
+    fn type_hex(h: &mut egui_kittest::Harness<'static, PhotozApp>, text: &str) {
         use egui_kittest::kittest::Queryable;
         h.get_by_role(egui::accesskit::Role::TextInput).click();
         h.run_steps(1);
@@ -4183,17 +4183,17 @@ mod color_tests {
     /// The Color panel's hex readout is editable, with or without the leading `#`.
     #[test]
     fn color_panel_hex_field_takes_a_typed_hex() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.session.tools.foreground = [1.0, 1.0, 1.0, 1.0];
         let mut h = egui_kittest::Harness::builder().with_size(vec2(300.0, 300.0)).build_ui_state(
-            |ui, app: &mut PhotocraftApp| {
+            |ui, app: &mut PhotozApp| {
                 if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                     color_picker(app, ui);
                 }
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
         h.run_steps(2);
         type_hex(&mut h, "003300");
         assert_eq!(srgb_bytes(h.state().session.tools.foreground), [0x00, 0x33, 0x00]);
@@ -4214,13 +4214,13 @@ mod color_tests {
             (crate::theme::ThemeKind::Studio, true),
             (crate::theme::ThemeKind::StudioLight, true),
         ] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
             app.session.tools.foreground = [1.0, 0.0, 0.0, 1.0];
             app.session.tools.background = [0.0, 0.0, 1.0, 1.0];
             let mut h = egui_kittest::Harness::builder()
                 .with_size(vec2(80.0, 120.0))
-                .build_ui_state(|ui, app: &mut PhotocraftApp| color_chips(app, ui, two_columns), app);
-            PhotocraftApp::setup_context(&h.ctx, kind);
+                .build_ui_state(|ui, app: &mut PhotozApp| color_chips(app, ui, two_columns), app);
+            PhotozApp::setup_context(&h.ctx, kind);
             h.run_steps(2);
             h.get_by_label("Swap colours (X)").click();
             h.run_steps(2);
@@ -4250,17 +4250,17 @@ mod color_tests {
     #[test]
     fn color_panel_hex_field_ignores_partial_input() {
         use egui_kittest::kittest::Queryable;
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.session.tools.foreground = [0.2, 0.4, 0.6, 1.0];
         let mut h = egui_kittest::Harness::builder().with_size(vec2(300.0, 300.0)).build_ui_state(
-            |ui, app: &mut PhotocraftApp| {
+            |ui, app: &mut PhotozApp| {
                 if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                     color_picker(app, ui);
                 }
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
         h.run_steps(2);
         let fg = h.state().session.tools.foreground;
         h.get_by_role(egui::accesskit::Role::TextInput).click();
@@ -4281,7 +4281,7 @@ mod color_tests {
     #[test]
     fn color_readout_rgb_fields_take_values() {
         use egui_kittest::kittest::Queryable;
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.session.tools.foreground = [0.0, 0.0, 0.0, 1.0];
         let mut h = field_harness(app);
         // The only spin buttons are R, G and B, in that order.
@@ -4301,7 +4301,7 @@ mod color_tests {
     /// The pro Color panel's hex readout edits the foreground too.
     #[test]
     fn color_field_hex_field_takes_a_typed_hex() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.session.tools.foreground = [1.0, 1.0, 1.0, 1.0];
         let mut h = field_harness(app);
         type_hex(&mut h, "003300");
@@ -4311,17 +4311,17 @@ mod color_tests {
     #[test]
     fn hue_and_saturation_fields_take_values_on_black() {
         use egui_kittest::kittest::Queryable;
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.session.tools.foreground = [0.0, 0.0, 0.0, 1.0];
         let mut h = egui_kittest::Harness::builder().with_size(vec2(300.0, 300.0)).build_ui_state(
-            |ui, app: &mut PhotocraftApp| {
+            |ui, app: &mut PhotozApp| {
                 if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                     hsb_sliders(app, ui);
                 }
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
         h.run_steps(2);
         // Hue, Saturation, Brightness, typed one key per frame. Black has no hue or saturation of its
         // own, so the first two used to reset to 0 and this ended on white.
@@ -4349,22 +4349,22 @@ mod color_tests {
         assert_eq!(color_field_height(Some(1.0e9), 300.0), 2000.0);
     }
 
-    fn field_harness(app: PhotocraftApp) -> egui_kittest::Harness<'static, PhotocraftApp> {
+    fn field_harness(app: PhotozApp) -> egui_kittest::Harness<'static, PhotozApp> {
         // 60 fps steps, so two clicks a frame apart are a double-click.
         let mut h = egui_kittest::Harness::builder().with_size(vec2(300.0, 200.0)).with_step_dt(1.0 / 60.0).build_ui_state(
-            |ui, app: &mut PhotocraftApp| {
+            |ui, app: &mut PhotozApp| {
                 if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                     color_field(app, ui);
                 }
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
         h.run_steps(2);
         h
     }
 
-    fn click(h: &mut egui_kittest::Harness<'_, PhotocraftApp>, p: egui::Pos2) {
+    fn click(h: &mut egui_kittest::Harness<'_, PhotozApp>, p: egui::Pos2) {
         h.hover_at(p);
         h.run_steps(1);
         for pressed in [true, false] {
@@ -4376,7 +4376,7 @@ mod color_tests {
     /// A click on the background chip makes the field edit the background, not the foreground.
     #[test]
     fn background_chip_retargets_the_color_field() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.session.tools.foreground = [0.2, 0.4, 0.6, 1.0];
         app.session.tools.background = [0.0, 0.0, 0.0, 1.0];
         let mut h = field_harness(app);
@@ -4393,7 +4393,7 @@ mod color_tests {
 
     #[test]
     fn double_clicking_a_chip_opens_its_color_picker() {
-        let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         let mut h = field_harness(app);
         let min = h.ctx.input(|i| i.viewport_rect()).min;
         // The foreground point is where the chips overlap: the foreground is on top there.
@@ -4410,7 +4410,7 @@ mod color_tests {
     }
 
     /// Press at `from`, move to `to` in six steps and release, as egui sees a drag.
-    fn drag(h: &mut egui_kittest::Harness<'_, PhotocraftApp>, from: egui::Pos2, to: egui::Pos2) {
+    fn drag(h: &mut egui_kittest::Harness<'_, PhotozApp>, from: egui::Pos2, to: egui::Pos2) {
         h.hover_at(from);
         h.run_steps(1);
         h.drag_at(from);
@@ -4446,7 +4446,7 @@ mod color_tests {
     /// (#3228).
     #[test]
     fn dragging_to_the_bottom_right_keeps_the_knob_there() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.session.tools.foreground = [1.0, 1.0, 1.0, 1.0];
         let mut h = field_harness(app);
         let min = h.ctx.input(|i| i.viewport_rect()).min;
@@ -4467,7 +4467,7 @@ mod color_tests {
     /// Black has no hue of its own, so each chip remembers the hue last picked for it.
     #[test]
     fn each_chip_keeps_its_own_hue_on_black() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.session.tools.foreground = [0.0, 0.0, 0.0, 1.0];
         app.session.tools.background = [0.0, 0.0, 0.0, 1.0];
         let mut h = field_harness(app);
@@ -4494,12 +4494,12 @@ mod info_panel_sampler_tests {
     /// the composite RGB/CMYK readout, one composite pixel each.
     #[test]
     fn info_panel_lists_the_sample_points() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 80, "height": 60, "background": "white"})).unwrap();
         app.run("view.colorSamplers.add", json!({"x": 5, "y": 6})).unwrap();
         app.run("view.colorSamplers.add", json!({"x": 40, "y": 30})).unwrap();
-        let mut h = Harness::builder().with_size(vec2(340.0, 400.0)).build_ui_state(|ui, app: &mut PhotocraftApp| info_panel(app, ui), app);
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Pro);
+        let mut h = Harness::builder().with_size(vec2(340.0, 400.0)).build_ui_state(|ui, app: &mut PhotozApp| info_panel(app, ui), app);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::Pro);
         h.run_steps(3);
         // Both points are listed, numbered, and read as white (RGB 255 / CMYK 0%).
         assert!(h.query_by_label("#1").is_some(), "point 1 is listed");
@@ -4518,7 +4518,7 @@ mod history_transform_tests {
     use super::*;
     use egui_kittest::Harness;
 
-    fn click(h: &mut Harness<'static, PhotocraftApp>, p: egui::Pos2) {
+    fn click(h: &mut Harness<'static, PhotozApp>, p: egui::Pos2) {
         h.hover_at(p);
         h.run_steps(1);
         for pressed in [true, false] {
@@ -4532,13 +4532,13 @@ mod history_transform_tests {
     #[test]
     fn history_rows_wait_for_an_open_transform() {
         for transforming in [true, false] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
             app.run("layer.new.layer", json!({})).unwrap();
             app.run("select.rect", json!({"x": 20, "y": 20, "width": 60, "height": 40})).unwrap();
             app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
             app.run("select.deselect", json!({})).unwrap();
-            let mut h = Harness::builder().with_size(vec2(300.0, 400.0)).build_ui_state(|ui, app: &mut PhotocraftApp| history(app, ui), app);
+            let mut h = Harness::builder().with_size(vec2(300.0, 400.0)).build_ui_state(|ui, app: &mut PhotozApp| history(app, ui), app);
             h.run_steps(2);
             if transforming {
                 let ctx = h.ctx.clone();
@@ -4562,16 +4562,16 @@ mod history_transform_tests {
     /// snapshot (#2966), and file-plus makes a new document from the current state.
     #[test]
     fn history_footer_buttons_run_their_commands() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
-        let mut h = Harness::builder().with_size(vec2(300.0, 400.0)).build_ui_state(|ui, app: &mut PhotocraftApp| history(app, ui), app);
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ProMedium);
+        let mut h = Harness::builder().with_size(vec2(300.0, 400.0)).build_ui_state(|ui, app: &mut PhotozApp| history(app, ui), app);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::ProMedium);
         h.state_mut().ui.theme = crate::theme::ThemeKind::ProMedium;
         h.run_steps(3);
         // Footer buttons are the only 26 pt squares; the bar lays them out right to left.
-        let buttons = |h: &Harness<'static, PhotocraftApp>| {
+        let buttons = |h: &Harness<'static, PhotozApp>| {
             let mut b: Vec<(Rect, bool)> = h.ctx.viewport(|v| {
                 v.prev_pass.widgets.layers().flat_map(|(_, w)| w.iter()).filter(|w| w.rect.size() == vec2(26.0, 26.0)).map(|w| (w.rect, w.enabled)).collect()
             });
@@ -4609,11 +4609,11 @@ mod snapshot_row_tests {
 
     use super::*;
 
-    fn top_pixel(h: &Harness<'static, PhotocraftApp>) -> [f32; 4] {
+    fn top_pixel(h: &Harness<'static, PhotozApp>) -> [f32; 4] {
         h.state().session.active().unwrap().doc.layers.last().unwrap().surface().unwrap().rgba(1, 1)
     }
 
-    fn snapshot_names(h: &Harness<'static, PhotocraftApp>) -> Vec<String> {
+    fn snapshot_names(h: &Harness<'static, PhotozApp>) -> Vec<String> {
         h.state().session.active().unwrap().snapshots.iter().map(|s| s.name.clone()).collect()
     }
 
@@ -4621,7 +4621,7 @@ mod snapshot_row_tests {
     /// state, and its right-click menu renames or deletes it.
     #[test]
     fn snapshot_rows_select_rename_and_delete() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         app.run("layer.new.layer", json!({})).unwrap();
         app.run("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -4629,7 +4629,7 @@ mod snapshot_row_tests {
         app.run("edit.fill", json!({"color": "#0000ff"})).unwrap();
         // 60 fps steps, so two clicks a frame apart count as a double-click.
         let mut h =
-            Harness::builder().with_size(vec2(300.0, 400.0)).with_step_dt(1.0 / 60.0).build_ui_state(|ui, app: &mut PhotocraftApp| history(app, ui), app);
+            Harness::builder().with_size(vec2(300.0, 400.0)).with_step_dt(1.0 / 60.0).build_ui_state(|ui, app: &mut PhotozApp| history(app, ui), app);
         h.run_steps(3);
         let steps = h.state().session.active().unwrap().history.entries().len();
         h.get_by_label("Snapshot 1").click();
@@ -4679,13 +4679,13 @@ mod snapshot_row_tests {
     /// its camera button in view.
     #[test]
     fn many_snapshots_keep_the_footer_in_a_short_panel() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
         for _ in 0..6 {
             app.run("history.newSnapshot", json!({})).unwrap();
         }
-        let mut h = Harness::builder().with_size(vec2(300.0, 250.0)).build_ui_state(|ui, app: &mut PhotocraftApp| history(app, ui), app);
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ProMedium);
+        let mut h = Harness::builder().with_size(vec2(300.0, 250.0)).build_ui_state(|ui, app: &mut PhotozApp| history(app, ui), app);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::ProMedium);
         h.state_mut().ui.theme = crate::theme::ThemeKind::ProMedium;
         h.run_steps(3);
         let view = h.ctx.input(|i| i.viewport_rect());
@@ -4700,12 +4700,12 @@ mod snapshot_row_tests {
     /// carry the edit over to the other document's snapshot with the same id.
     #[test]
     fn a_rename_in_progress_stays_with_its_document() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         for _ in 0..2 {
             app.run("file.new", json!({"width": 200, "height": 150})).unwrap();
             app.run("history.newSnapshot", json!({})).unwrap();
         }
-        let mut h = Harness::builder().with_size(vec2(300.0, 400.0)).build_ui_state(|ui, app: &mut PhotocraftApp| history(app, ui), app);
+        let mut h = Harness::builder().with_size(vec2(300.0, 400.0)).build_ui_state(|ui, app: &mut PhotozApp| history(app, ui), app);
         h.run_steps(3);
         h.get_by_label("Snapshot 1").click_secondary();
         h.run_steps(2);
@@ -4732,14 +4732,14 @@ mod lock_tests {
     use crate::canvas::{ToolEvent, tool_event};
     use egui::Modifiers;
 
-    fn click_lock(app: &mut PhotocraftApp) {
+    fn click_lock(app: &mut PhotozApp) {
         let st = app.session.active().unwrap();
         let l = st.active_layer.and_then(|id| st.doc.layer(id)).unwrap();
         let (cmd, p) = simple_lock_toggle(crate::doc_props_ui::is_background(&st.doc, l), l);
         app.run(&cmd, p).unwrap();
     }
 
-    fn erase_line(app: &mut PhotocraftApp) {
+    fn erase_line(app: &mut PhotozApp) {
         app.ui.tool = Tool::Eraser;
         let m = Modifiers::NONE;
         tool_event(app, ToolEvent::Down { x: 10.0, y: 40.0, pressure: 1.0 }, m);
@@ -4751,7 +4751,7 @@ mod lock_tests {
     fn simple_lock_button_never_locks_the_eraser_out_of_the_background() {
         // #76: the simple themes' lock button used to toggle "lock all" on the Background, which
         // kept showing as locked and then refused every paint tool.
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 120, "height": 80})).unwrap();
         app.run("tools.setColors", json!({"background": "#ff0000"})).unwrap();
         app.run("tools.setBrush", json!({"brush": {"size": 12, "hardness": 1.0}})).unwrap();
@@ -4785,7 +4785,7 @@ mod swatch_type_tests {
     /// would recolour selected type the moment it was selected.
     #[test]
     fn idle_hsb_sliders_leave_the_foreground_and_selected_type_alone() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 400, "height": 200})).unwrap();
         let id = app.run("type.create", json!({"text": "Hello world", "size": 40, "x": 20, "y": 100, "color": "#ffffff"})).unwrap()["layer"].as_u64().unwrap();
         app.run("tools.setColors", json!({"foreground": "#d8452e"})).unwrap();
@@ -4802,11 +4802,11 @@ mod swatch_type_tests {
             resize: None,
             preedit: None,
         });
-        let mut h = Harness::builder().with_size(vec2(300.0, 300.0)).build_ui_state(|ui, app: &mut PhotocraftApp| color_picker(app, ui), app);
+        let mut h = Harness::builder().with_size(vec2(300.0, 300.0)).build_ui_state(|ui, app: &mut PhotozApp| color_picker(app, ui), app);
         h.run_steps(4);
         assert_eq!(h.state().session.tools.foreground, fg);
         let st = h.state().session.active().unwrap();
-        let Some(photocraft_doc::LayerContent::Text(t)) = st.doc.layer(photocraft_doc::LayerId(id)).map(|l| &l.content) else { panic!("type layer") };
+        let Some(photoz_doc::LayerContent::Text(t)) = st.doc.layer(photoz_doc::LayerId(id)).map(|l| &l.content) else { panic!("type layer") };
         assert_eq!(t.char_runs().len(), 1, "still one white run");
     }
 }
@@ -4815,7 +4815,7 @@ mod swatch_type_tests {
 mod type_flyout_tests {
     use super::*;
 
-    fn frame(app: &mut PhotocraftApp, ctx: &egui::Context, time: f64, events: Vec<egui::Event>) {
+    fn frame(app: &mut PhotozApp, ctx: &egui::Context, time: f64, events: Vec<egui::Event>) {
         let mut out = ctx.run_ui(
             egui::RawInput { time: Some(time), events, screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(1200.0, 1800.0))), ..Default::default() },
             |ui| toolbar(app, ui),
@@ -4825,10 +4825,10 @@ mod type_flyout_tests {
 
     #[test]
     fn long_press_type_button_selects_type_then_vertical_from_the_flyout() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         assert_ne!(app.ui.tool, Tool::Type);
         let ctx = egui::Context::default();
-        PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
+        PhotozApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
         frame(&mut app, &ctx, 0.0, vec![]);
         frame(&mut app, &ctx, 0.1, vec![]);
         let index = TOOL_SECTIONS.iter().flat_map(|section| section.iter()).position(|slot| slot.contains(&Tool::Type)).unwrap();
@@ -4865,9 +4865,9 @@ mod type_flyout_tests {
     /// cycling the mode on release; a plain click still cycles, and right-click still opens it.
     #[test]
     fn long_press_screen_mode_opens_the_modes_without_cycling() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
-        PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
+        PhotozApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
         frame(&mut app, &ctx, 0.0, vec![]);
         frame(&mut app, &ctx, 0.1, vec![]);
         let bx = if Tokens::get(&ctx).pro { 30.0 } else { 36.0 };
@@ -4884,7 +4884,7 @@ mod type_flyout_tests {
             })
             .unwrap()
             .center();
-        let standard = |app: &PhotocraftApp| crate::view_cmds::checked(app, "view.screenMode.standard") == Some(true);
+        let standard = |app: &PhotozApp| crate::view_cmds::checked(app, "view.screenMode.standard") == Some(true);
         let menu_open = |ctx: &egui::Context| egui::Popup::is_any_open(ctx);
         let pointer = |pos, pressed| egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed, modifiers: Default::default() };
         assert!(standard(&app));
@@ -4921,7 +4921,7 @@ mod type_flyout_tests {
     }
 
     /// Every text drawn in one toolbar frame.
-    fn frame_texts(app: &mut PhotocraftApp, ctx: &egui::Context, time: f64, events: Vec<egui::Event>) -> Vec<String> {
+    fn frame_texts(app: &mut PhotozApp, ctx: &egui::Context, time: f64, events: Vec<egui::Event>) -> Vec<String> {
         fn collect(shape: &egui::Shape, out: &mut Vec<String>) {
             match shape {
                 egui::Shape::Text(t) => out.push(t.galley.text().to_string()),
@@ -4943,9 +4943,9 @@ mod type_flyout_tests {
     /// held tool or any other; a plain hover still shows its tooltip.
     #[test]
     fn no_tooltips_over_an_open_tool_flyout() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
-        PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
+        PhotozApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
         frame(&mut app, &ctx, 0.0, vec![]);
         frame(&mut app, &ctx, 0.1, vec![]);
         let bx = if Tokens::get(&ctx).pro { 30.0 } else { 36.0 };
@@ -4993,9 +4993,9 @@ mod type_flyout_tests {
     /// #4932: so does a click on its own tool button.
     #[test]
     fn a_drag_outside_closes_the_tool_flyout() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
-        PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
+        PhotozApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
         frame(&mut app, &ctx, 0.0, vec![]);
         frame(&mut app, &ctx, 0.1, vec![]);
         let index = TOOL_SECTIONS.iter().flat_map(|section| section.iter()).position(|slot| slot.contains(&Tool::Brush)).unwrap();
@@ -5015,7 +5015,7 @@ mod type_flyout_tests {
         let secondary = |pressed| egui::Event::PointerButton { pos: at, button: egui::PointerButton::Secondary, pressed, modifiers: Default::default() };
         let primary = |pos, pressed| egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed, modifiers: Default::default() };
         // A right-click on the button of an open flyout closes it (#4932), so open only a closed one.
-        let open = |app: &mut PhotocraftApp, t: f64| {
+        let open = |app: &mut PhotozApp, t: f64| {
             if !flyout(&ctx) {
                 frame(app, &ctx, t, vec![egui::Event::PointerMoved(at), secondary(true)]);
                 frame(app, &ctx, t + 0.05, vec![secondary(false)]);
@@ -5071,9 +5071,9 @@ mod type_flyout_tests {
 
     #[test]
     fn long_press_clone_stamp_selects_pattern_stamp() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
-        PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
+        PhotozApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
         frame(&mut app, &ctx, 0.0, vec![]);
         frame(&mut app, &ctx, 0.1, vec![]);
         let index = TOOL_SECTIONS.iter().flat_map(|section| section.iter()).position(|slot| slot.contains(&Tool::CloneStamp)).unwrap();
@@ -5107,9 +5107,9 @@ mod type_flyout_tests {
 
     #[test]
     fn long_press_brush_selects_color_replacement() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
-        PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
+        PhotozApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
         frame(&mut app, &ctx, 0.0, vec![]);
         frame(&mut app, &ctx, 0.1, vec![]);
         let index = TOOL_SECTIONS.iter().flat_map(|section| section.iter()).position(|slot| slot.contains(&Tool::Brush)).unwrap();
@@ -5165,9 +5165,9 @@ mod toolbar_hidden_tests {
     use super::*;
 
     /// Clickable tool-sized buttons the toolbar drew in its last pass.
-    fn tool_buttons(app: &mut PhotocraftApp) -> usize {
+    fn tool_buttons(app: &mut PhotozApp) -> usize {
         let ctx = egui::Context::default();
-        PhotocraftApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
+        PhotozApp::setup_context(&ctx, crate::theme::ThemeKind::ALL[0]);
         for time in [0.0, 0.1] {
             let mut out = ctx.run_ui(
                 egui::RawInput { time: Some(time), screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(1200.0, 1800.0))), ..Default::default() },
@@ -5179,14 +5179,14 @@ mod toolbar_hidden_tests {
         ctx.viewport(|v| v.prev_pass.widgets.layers().flat_map(|(_, w)| w.iter()).filter(|w| w.rect.size() == size && w.sense.senses_click()).count())
     }
 
-    fn hide(app: &mut PhotocraftApp, tools: &[Tool]) {
+    fn hide(app: &mut PhotozApp, tools: &[Tool]) {
         let names: Vec<String> = tools.iter().map(|tool| format!("{tool:?}")).collect();
         app.session.edit_prefs(|p| p.toolbar.hidden = names);
     }
 
     #[test]
     fn hidden_tools_leave_the_toolbar() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         let all = tool_buttons(&mut app);
         let slots: usize = TOOL_SECTIONS.iter().map(|section| section.len()).sum();
         hide(&mut app, &Tool::ALL);
@@ -5219,7 +5219,7 @@ mod properties_card_tests {
     /// Arithmetic left uncommitted in one fill layer's card never lands on the layer selected next.
     #[test]
     fn uncommitted_arithmetic_stays_with_its_layer() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = photoz_engine::Session::new();
         s.execute("file.new", json!({"width": 64, "height": 64})).unwrap();
         let mut ids = Vec::new();
         for color in ["#00ff00", "#0000ff"] {
@@ -5228,17 +5228,17 @@ mod properties_card_tests {
         }
         // The layer selected next already shows 25, the value the edited one has when `25*` stops it.
         s.execute("layer.setProps", json!({"layer": ids[0].0, "opacity": 0.25})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = PhotozApp::new(s, crate::Services::default());
         app.ui.panels.properties = true;
         let mut h = Harness::builder().with_size(vec2(800.0, 600.0)).build_ui_state(
-            |ui, app: &mut PhotocraftApp| {
+            |ui, app: &mut PhotozApp| {
                 if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("semibold".into()))) {
                     properties_window(app, ui.ctx());
                 }
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
         h.run_steps(2);
         h.query_all_by_role(egui::accesskit::Role::SpinButton).next().unwrap().click();
         h.run_steps(1);
@@ -5263,9 +5263,9 @@ mod toolbar_tests {
     /// #1197: the header chevron switches the toolbar between one and two columns.
     #[test]
     fn header_chevron_toggles_two_columns() {
-        let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 1400.0)).build_ui_state(
-            |ui, app: &mut PhotocraftApp| {
+            |ui, app: &mut PhotozApp| {
                 if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                     toolbar(app, ui);
                     let left = ui.available_rect_before_wrap().left();
@@ -5274,9 +5274,9 @@ mod toolbar_tests {
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Pro);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::Pro);
         h.run_steps(2);
-        let left = |h: &egui_kittest::Harness<'_, PhotocraftApp>| h.ctx.data(|d| d.get_temp::<f32>(egui::Id::new("toolbar-test-left"))).unwrap_or(0.0);
+        let left = |h: &egui_kittest::Harness<'_, PhotozApp>| h.ctx.data(|d| d.get_temp::<f32>(egui::Id::new("toolbar-test-left"))).unwrap_or(0.0);
         let single = left(&h);
         assert!(!h.state().ui.panels.toolbar_double);
 
@@ -5291,7 +5291,7 @@ mod toolbar_tests {
         assert_eq!(left(&h), single);
     }
 
-    fn click(h: &mut egui_kittest::Harness<'_, PhotocraftApp>, p: egui::Pos2) {
+    fn click(h: &mut egui_kittest::Harness<'_, PhotozApp>, p: egui::Pos2) {
         h.hover_at(p);
         h.run_steps(1);
         for pressed in [true, false] {
@@ -5301,7 +5301,7 @@ mod toolbar_tests {
     }
 
     /// A tool's toolbar button: tool buttons have no label, so find it by slot order.
-    fn tool_button(h: &egui_kittest::Harness<'_, PhotocraftApp>, tool: Tool) -> egui::Pos2 {
+    fn tool_button(h: &egui_kittest::Harness<'_, PhotozApp>, tool: Tool) -> egui::Pos2 {
         let size = egui::Vec2::splat(if Tokens::get(&h.ctx).pro { 30.0 } else { 36.0 });
         let buttons: Vec<Rect> = h.ctx.viewport(|v| {
             v.prev_pass.widgets.layers().flat_map(|(_, w)| w.iter()).filter(|w| w.rect.size() == size && w.sense.senses_click()).map(|w| w.rect).collect()
@@ -5310,21 +5310,21 @@ mod toolbar_tests {
         buttons[index].center()
     }
 
-    fn hand_button(h: &egui_kittest::Harness<'_, PhotocraftApp>) -> egui::Pos2 {
+    fn hand_button(h: &egui_kittest::Harness<'_, PhotozApp>) -> egui::Pos2 {
         tool_button(h, Tool::Hand)
     }
 
-    fn toolbar_harness(app: PhotocraftApp) -> egui_kittest::Harness<'static, PhotocraftApp> {
+    fn toolbar_harness(app: PhotozApp) -> egui_kittest::Harness<'static, PhotozApp> {
         // 60 fps steps, so two clicks a few frames apart are a double-click.
         let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 1400.0)).with_step_dt(1.0 / 60.0).build_ui_state(
-            |ui, app: &mut PhotocraftApp| {
+            |ui, app: &mut PhotozApp| {
                 if ui.ctx().fonts(|f| f.families().contains(&egui::FontFamily::Name("medium".into()))) {
                     toolbar(app, ui);
                 }
             },
             app,
         );
-        PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
+        PhotozApp::setup_context(&h.ctx, crate::theme::ThemeKind::Studio);
         h.run_steps(2);
         h
     }
@@ -5333,7 +5333,7 @@ mod toolbar_tests {
     /// picks the tool.
     #[test]
     fn double_clicking_the_hand_tool_fits_on_screen() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.ui.tool = Tool::Move;
         app.ui.views[0].fit_pending = false;
@@ -5353,7 +5353,7 @@ mod toolbar_tests {
     /// With no document open the double-click still picks the tool and doesn't panic.
     #[test]
     fn double_clicking_the_hand_tool_without_a_document_is_harmless() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.ui.tool = Tool::Move;
         let mut h = toolbar_harness(app);
         let p = hand_button(&h);
@@ -5366,7 +5366,7 @@ mod toolbar_tests {
     /// Double-clicking the Zoom tool zooms to 100% (Photoshop); a single click only picks the tool.
     #[test]
     fn double_clicking_the_zoom_tool_zooms_to_actual_pixels() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 64, "height": 64})).unwrap();
         app.ui.tool = Tool::Move;
         app.ui.views[0].fit_pending = true;
@@ -5388,7 +5388,7 @@ mod toolbar_tests {
     /// With no document open the double-click still picks the tool and doesn't panic.
     #[test]
     fn double_clicking_the_zoom_tool_without_a_document_is_harmless() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
         app.ui.tool = Tool::Move;
         let mut h = toolbar_harness(app);
         let p = tool_button(&h, Tool::Zoom);
@@ -5404,10 +5404,10 @@ mod embedding_tests {
     use super::*;
     use egui_kittest::kittest::Queryable;
 
-    fn whole_app(rail: bool, menu_bar: bool) -> egui_kittest::Harness<'static, PhotocraftApp> {
+    fn whole_app(rail: bool, menu_bar: bool) -> egui_kittest::Harness<'static, PhotozApp> {
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1280.0, 800.0)).with_max_steps(64).build_eframe(move |cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            PhotozApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
             app.ui.panels.rail = rail;
             app.ui.panels.menu_bar = menu_bar;
             app
@@ -5416,7 +5416,7 @@ mod embedding_tests {
         h
     }
 
-    fn drawn(h: &egui_kittest::Harness<'_, PhotocraftApp>, panel: &str) -> bool {
+    fn drawn(h: &egui_kittest::Harness<'_, PhotozApp>, panel: &str) -> bool {
         egui::containers::panel::PanelState::load(&h.ctx, egui::Id::new(panel)).is_some()
     }
 
@@ -5538,7 +5538,7 @@ mod group_drag_selection_tests {
 
     #[test]
     fn the_background_row_neither_moves_nor_takes_a_layer_below_it() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = photoz_engine::Session::new();
         s.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
         let bg = s.active().unwrap().doc.layers[0].id;
         let a = LayerId(s.execute("layer.new.layer", json!({})).unwrap()["layer"].as_u64().unwrap());
@@ -5553,7 +5553,7 @@ mod group_drag_selection_tests {
         assert!(!refused(a, bg, "above", &[a], false));
         assert!(!refused(bg, a, "above", &[bg], true), "⌥-dragging copies the Background above");
         // Without a Background every drop is fine.
-        let mut s = photocraft_engine::Session::new();
+        let mut s = photoz_engine::Session::new();
         s.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
         s.execute("layer.new.layerFromBackground", json!({})).unwrap();
         let l0 = s.active().unwrap().doc.layers[0].id;
@@ -5623,14 +5623,14 @@ mod compact_visual_regressions {
         input
     }
 
-    fn toolbar_harness(kind: theme::ThemeKind, scale: f32) -> egui_kittest::Harness<'static, PhotocraftApp> {
+    fn toolbar_harness(kind: theme::ThemeKind, scale: f32) -> egui_kittest::Harness<'static, PhotozApp> {
         toolbar_harness_sized(kind, scale, 360.0)
     }
 
-    fn toolbar_harness_sized(kind: theme::ThemeKind, scale: f32, height: f32) -> egui_kittest::Harness<'static, PhotocraftApp> {
+    fn toolbar_harness_sized(kind: theme::ThemeKind, scale: f32, height: f32) -> egui_kittest::Harness<'static, PhotozApp> {
         let mut ready = false;
         let mut harness = egui_kittest::Harness::builder().with_size(vec2(400.0, height)).with_pixels_per_point(scale).build_ui_state(
-            move |ui, app: &mut PhotocraftApp| {
+            move |ui, app: &mut PhotozApp| {
                 if !ready {
                     egui_extras::install_image_loaders(ui.ctx());
                     theme::install_fonts(ui.ctx());
@@ -5642,7 +5642,7 @@ mod compact_visual_regressions {
                 crate::shortcuts::handle(app, ui.ctx());
                 toolbar(app, ui);
             },
-            PhotocraftApp::new(photocraft_engine::Session::new(), Default::default()),
+            PhotozApp::new(photoz_engine::Session::new(), Default::default()),
         );
         harness.run_steps(4);
         harness
@@ -5717,12 +5717,12 @@ mod compact_visual_regressions {
         for kind in crate::theme::ThemeKind::ALL {
             for (width, height) in [(800.0, 480.0), (1280.0, 720.0)] {
                 for scale in [1.0, 1.5, 2.0] {
-                    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+                    let mut app = PhotozApp::new(photoz_engine::Session::new(), Default::default());
                     app.session.tools.foreground = [1.0, 0.0, 1.0, 1.0];
                     app.session.tools.background = [0.0, 1.0, 0.0, 1.0];
                     let mut ready = false;
                     let mut harness = egui_kittest::Harness::builder().with_size(vec2(width, height)).with_pixels_per_point(scale).wgpu().build_ui_state(
-                        move |ui, app: &mut PhotocraftApp| {
+                        move |ui, app: &mut PhotozApp| {
                             if !ready {
                                 egui_extras::install_image_loaders(ui.ctx());
                                 crate::theme::install_fonts(ui.ctx());
@@ -5738,7 +5738,7 @@ mod compact_visual_regressions {
                     );
                     harness.input_mut().max_texture_side = Some(8192);
                     harness.run_steps(4);
-                    let stem = format!("photocraft-compact-{}-{width}-{height}-{scale}x", kind.id());
+                    let stem = format!("photoz-compact-{}-{width}-{height}-{scale}x", kind.id());
                     harness.render().unwrap().save(directory.join(format!("{stem}.png"))).unwrap();
                     let mut regions = serde_json::Map::new();
                     for id in ["options_bar", "toolbar"] {
@@ -5775,7 +5775,7 @@ mod compact_visual_regressions {
                     egui_extras::install_image_loaders(&ctx);
                     crate::theme::install_fonts(&ctx);
                     crate::theme::apply(&ctx, kind);
-                    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+                    let mut app = PhotozApp::new(photoz_engine::Session::new(), Default::default());
                     app.session.tools.foreground = [1.0, 0.0, 1.0, 1.0];
                     app.session.tools.background = [0.0, 1.0, 0.0, 1.0];
                     let mut output = ctx.run_ui(input_at_scale(Rect::from_min_size(egui::Pos2::ZERO, vec2(800.0, height)), scale), |ui| toolbar(&mut app, ui));
@@ -5805,7 +5805,7 @@ mod compact_visual_regressions {
             for scale in [1.0, 1.5, 2.0] {
                 let mut ready = false;
                 let mut harness = egui_kittest::Harness::builder().with_size(vec2(360.0, 120.0)).with_pixels_per_point(scale).build_ui_state(
-                    move |ui, app: &mut PhotocraftApp| {
+                    move |ui, app: &mut PhotozApp| {
                         if !ready {
                             egui_extras::install_image_loaders(ui.ctx());
                             theme::install_fonts(ui.ctx());
@@ -5818,7 +5818,7 @@ mod compact_visual_regressions {
                         crate::shortcuts::handle(app, ui.ctx());
                         options_bar(app, ui);
                     },
-                    PhotocraftApp::new(photocraft_engine::Session::new(), Default::default()),
+                    PhotozApp::new(photoz_engine::Session::new(), Default::default()),
                 );
                 harness.run_steps(4);
                 let pro = Tokens::get(&harness.ctx).pro;
@@ -5875,7 +5875,7 @@ mod compact_visual_regressions {
                     let ctx = egui::Context::default();
                     crate::theme::install_fonts(&ctx);
                     crate::theme::apply(&ctx, kind);
-                    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+                    let mut app = PhotozApp::new(photoz_engine::Session::new(), Default::default());
                     if !Tokens::get(&ctx).pro {
                         continue;
                     }
@@ -5932,9 +5932,9 @@ mod compact_visual_regressions {
         let ctx = egui::Context::default();
         crate::theme::install_fonts(&ctx);
         crate::theme::apply(&ctx, crate::theme::ThemeKind::ALL[0]);
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), Default::default());
         let screen = Rect::from_min_size(egui::Pos2::ZERO, vec2(1600.0, 900.0));
-        let run = |app: &mut PhotocraftApp| {
+        let run = |app: &mut PhotozApp| {
             let mut top = 0.0;
             let mut out = ctx.run_ui(input_at_scale(screen, 1.0), |ui| {
                 options_bar(app, ui);
@@ -5960,7 +5960,7 @@ mod compact_visual_regressions {
                     egui_extras::install_image_loaders(&ctx);
                     crate::theme::install_fonts(&ctx);
                     crate::theme::apply(&ctx, kind);
-                    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+                    let mut app = PhotozApp::new(photoz_engine::Session::new(), Default::default());
                     let (tool, last_label) = if Tokens::get(&ctx).pro { (Tool::Pencil, "Auto Erase") } else { (Tool::Brush, "Pressure for Opacity") };
                     app.ui.tool = tool;
                     let screen = Rect::from_min_size(egui::Pos2::ZERO, vec2(width, 120.0));
@@ -6014,7 +6014,7 @@ mod properties_target_regressions {
 
     #[test]
     fn pending_transform_arithmetic_does_not_apply_to_another_document_with_the_same_layer_id() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width":200,"height":200,"background":"transparent"})).unwrap();
         app.run("select.rect", json!({"x":10,"y":20,"width":100,"height":50})).unwrap();
         app.run("edit.fill", json!({"color":"#ff0000"})).unwrap();
@@ -6026,9 +6026,9 @@ mod properties_target_regressions {
         assert!(app.session.set_active(0));
         let mut ready = false;
         let mut h = Harness::builder().with_size(vec2(360.0, 650.0)).build_ui_state(
-            move |ui, app: &mut PhotocraftApp| {
+            move |ui, app: &mut PhotozApp| {
                 if !ready {
-                    PhotocraftApp::setup_context(ui.ctx(), theme::ThemeKind::ProMedium);
+                    PhotozApp::setup_context(ui.ctx(), theme::ThemeKind::ProMedium);
                     ready = true;
                     return;
                 }

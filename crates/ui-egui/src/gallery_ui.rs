@@ -14,13 +14,13 @@
 use std::hash::{Hash, Hasher};
 
 use egui::{Align2, Color32, FontId, Rect as ERect, Sense, Stroke, TextureHandle, pos2, vec2};
-use photocraft_algo::{FilterParams, GALLERY_CATEGORIES, GalleryFilter};
-use photocraft_doc::LayerId;
-use photocraft_geom::Rect;
-use photocraft_raster::{Interrupt, Surface};
+use photoz_algo::{FilterParams, GALLERY_CATEGORIES, GalleryFilter};
+use photoz_doc::LayerId;
+use photoz_geom::Rect;
+use photoz_raster::{Interrupt, Surface};
 use serde_json::{Map, Value, json};
 
-use crate::PhotocraftApp;
+use crate::PhotozApp;
 use crate::edit_history::{EditHistory, Step};
 use crate::filter_dialog::{Kind, parse_spec};
 use crate::theme::Tokens;
@@ -186,10 +186,10 @@ fn sample(surf: &Surface, r: Rect, k: u32) -> Surface {
 
 /// Runs a stack on a small surface (the preview and thumbnails).
 fn render(src: &Surface, params: &Value) -> Surface {
-    let effects = photocraft_engine::gallery_cmds::effects_from_json(params).unwrap_or_default();
+    let effects = photoz_engine::gallery_cmds::effects_from_json(params).unwrap_or_default();
     let b = src.content_bounds().union(&Rect::new(0, 0, 1, 1));
     let b = Rect::new(0, 0, b.x1, b.y1);
-    photocraft_algo::apply_in(src, &FilterParams::FilterGallery { effects }, b, b, None, b)
+    photoz_algo::apply_in(src, &FilterParams::FilterGallery { effects }, b, b, None, b)
 }
 
 /// The preview of `vis` at 1/`k` (#2502): the stack runs at full resolution exactly as OK runs it
@@ -197,11 +197,11 @@ fn render(src: &Surface, params: &Value) -> Surface {
 /// the pixels equal the same crop of the applied result; then `k`×`k` blocks are averaged.
 /// `None` when cancelled.
 fn preview_pixels(src: &Surface, canvas: Rect, params: &Value, vis: Rect, k: u32, ctl: &Interrupt) -> Option<Surface> {
-    let effects = photocraft_engine::gallery_cmds::effects_from_json(params).unwrap_or_default();
+    let effects = photoz_engine::gallery_cmds::effects_from_json(params).unwrap_or_default();
     let fp = FilterParams::FilterGallery { effects };
     let content = src.content_bounds();
-    let area = photocraft_algo::output_area(&fp, content, canvas, None).intersect(&vis);
-    let full = if area.is_empty() { src.clone() } else { photocraft_algo::apply_in_with(src, &fp, area, canvas, None, canvas.union(&content), ctl)? };
+    let area = photoz_algo::output_area(&fp, content, canvas, None).intersect(&vis);
+    let full = if area.is_empty() { src.clone() } else { photoz_algo::apply_in_with(src, &fp, area, canvas, None, canvas.union(&content), ctl)? };
     Some(reduce(&full, vis, k))
 }
 
@@ -270,7 +270,7 @@ fn image(surf: &Surface, w: usize, h: usize) -> egui::ColorImage {
 }
 
 /// Opens the dialog on the active layer, starting from the last gallery stack used.
-pub fn open(app: &mut PhotocraftApp) -> Result<(), String> {
+pub fn open(app: &mut PhotozApp) -> Result<(), String> {
     let (layer, src, _) = crate::distort_ui::active_pixels(app)?;
     let st = app.session.active().ok_or("no document")?;
     let canvas = st.doc.bounds();
@@ -331,7 +331,7 @@ pub fn open(app: &mut PhotocraftApp) -> Result<(), String> {
 }
 
 /// OK: runs `filter.filterGallery` with the stack (one history step).
-pub fn commit(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub fn commit(app: &mut PhotozApp) -> Result<Value, String> {
     let Some(d) = app.distort.gallery.take() else { return Err("the Filter Gallery is not open".into()) };
     if !d.effects.iter().any(|e| e.visible) {
         return Ok(json!({"committed": false}));
@@ -342,7 +342,7 @@ pub fn commit(app: &mut PhotocraftApp) -> Result<Value, String> {
 }
 
 /// Control channel: `filter.filterGallery {"ui": {...}}` while the dialog is open.
-pub fn control(app: &mut PhotocraftApp, ui: &Value) -> Result<Value, String> {
+pub fn control(app: &mut PhotozApp, ui: &Value) -> Result<Value, String> {
     let flag = |k: &str| ui.get(k).and_then(Value::as_bool) == Some(true);
     if flag("commit") {
         let r = commit(app)?;
@@ -397,7 +397,7 @@ struct PreviewJob {
     key: u64,
     vis: Rect,
     rx: std::sync::mpsc::Receiver<Result<Option<(egui::ColorImage, f64)>, String>>,
-    ctl: photocraft_engine::jobs::JobCtx,
+    ctl: photoz_engine::jobs::JobCtx,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -506,7 +506,7 @@ fn start_job(d: &mut GalleryDialog, ctx: &egui::Context, key: u64, vis: Rect, k:
         return;
     }
     let (tx, rx) = std::sync::mpsc::sync_channel(1);
-    let ctl = photocraft_engine::jobs::JobCtx::new();
+    let ctl = photoz_engine::jobs::JobCtx::new();
     let (work, src, canvas, params, repaint) = (ctl.clone(), d.src.clone(), d.canvas, params.clone(), ctx.clone());
     let spawned = std::thread::Builder::new().name("gallery-preview".into()).spawn(move || {
         let run = || {
@@ -549,7 +549,7 @@ fn update_thumbs(d: &mut GalleryDialog, ctx: &egui::Context, budget: usize) {
 }
 
 /// Draws the dialog (a full-window layer over the app).
-pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn show(app: &mut PhotozApp, ctx: &egui::Context) {
     let t = Tokens::get(ctx);
     let screen = ctx.content_rect();
     let mut action: Option<&str> = None;
@@ -724,7 +724,7 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
                             .and_then(Value::as_array)
                             .map(|a| a.iter().filter_map(Value::as_f64).map(|v| v as f32).collect::<Vec<_>>())
                             .filter(|v| v.len() >= 3);
-                        let neon = photocraft_algo::GalleryEffect::new(GalleryFilter::NeonGlow).color;
+                        let neon = photoz_algo::GalleryEffect::new(GalleryFilter::NeonGlow).color;
                         let mut rgb = c.map_or([neon[0], neon[1], neon[2]], |v| [v[0], v[1], v[2]]);
                         ui.horizontal(|ui| {
                             ui.label(egui::RichText::new(tl!("Glow Color")).color(t.text_dim));
@@ -805,8 +805,8 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
 mod tests {
     use super::*;
 
-    fn app() -> PhotocraftApp {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    fn app() -> PhotozApp {
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), Default::default());
         app.session.execute("file.new", json!({"width": 90, "height": 60, "depth": 16})).unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();
         app.session
@@ -873,7 +873,7 @@ mod tests {
         // Preview equals the engine's algorithm on the sampled pixels.
         let src = sample(&d.src, d.canvas, 1);
         let a = render(&src, &d.params());
-        let mut s2 = photocraft_engine::Session::new();
+        let mut s2 = photoz_engine::Session::new();
         s2.add_document(app.session.active().unwrap().doc.as_ref().clone(), None);
         s2.select_layer(d.layer).unwrap();
         s2.execute("filter.filterGallery", d.params()).unwrap();
@@ -885,9 +885,9 @@ mod tests {
 
     /// A 240×160 layer with gradients, edges and fine detail, so every gallery filter has
     /// something to draw.
-    fn photo_app() -> PhotocraftApp {
+    fn photo_app() -> PhotozApp {
         let (w, h) = (240, 160);
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let mut app = PhotozApp::new(photoz_engine::Session::new(), Default::default());
         app.session.execute("file.new", json!({"width": w, "height": h, "depth": 16})).unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();
         app.session
@@ -909,8 +909,8 @@ mod tests {
     }
 
     /// What OK applies: `filter.filterGallery` with the dialog's stack on a copy of the document.
-    fn applied(app: &PhotocraftApp, d: &GalleryDialog) -> Surface {
-        let mut s2 = photocraft_engine::Session::new();
+    fn applied(app: &PhotozApp, d: &GalleryDialog) -> Surface {
+        let mut s2 = photoz_engine::Session::new();
         s2.add_document(app.session.active().unwrap().doc.as_ref().clone(), None);
         s2.select_layer(d.layer).unwrap();
         s2.execute("filter.filterGallery", d.params()).unwrap();
@@ -993,7 +993,7 @@ mod tests {
 
     #[test]
     fn reduce_averages_blocks_weighted_by_alpha() {
-        let mut s = Surface::new(photocraft_color::PixelFormat::new(photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::F32, true));
+        let mut s = Surface::new(photoz_color::PixelFormat::new(photoz_color::ColorMode::Rgb, photoz_color::SampleType::F32, true));
         s.write_pixel(0, 0, &[1.0, 0.0, 0.0, 1.0]);
         s.write_pixel(1, 0, &[0.0, 1.0, 0.0, 0.0]); // transparent: its colour doesn't count
         s.write_pixel(2, 0, &[0.2, 0.4, 0.6, 1.0]); // a partial block at the edge
@@ -1034,13 +1034,13 @@ mod tests {
         app.distort.gallery = None;
     }
 
-    /// Preview cost on 24 MP: `cargo test -p photocraft-ui-egui --lib bench_gallery_preview -- --ignored --nocapture`.
+    /// Preview cost on 24 MP: `cargo test -p photoz-ui-egui --lib bench_gallery_preview -- --ignored --nocapture`.
     #[test]
     #[ignore]
     fn bench_gallery_preview() {
         let (w, h) = (6000, 4000);
         let canvas = Rect::new(0, 0, w, h);
-        let mut s = Surface::new(photocraft_color::PixelFormat::new(photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8, true));
+        let mut s = Surface::new(photoz_color::PixelFormat::new(photoz_color::ColorMode::Rgb, photoz_color::SampleType::U8, true));
         s.fill_rect(canvas, &[0.5, 0.4, 0.3, 1.0]);
         for y in (0..h).step_by(9) {
             s.fill_rect(Rect::new(0, y, w, y + 3), &[0.9, 0.8, 0.2, 1.0]);

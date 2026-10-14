@@ -1,8 +1,8 @@
 use super::*;
 use crate::menus::{invoke as menu, is_live, menu_items};
 
-fn app_with(n: usize) -> (PhotocraftApp, egui::Context) {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app_with(n: usize) -> (PhotozApp, egui::Context) {
+    let mut app = PhotozApp::new(photoz_engine::Session::new(), crate::Services::default());
     for i in 0..n {
         app.run("file.new", json!({"width": 100 + i as u32 * 10, "height": 80})).unwrap();
     }
@@ -10,7 +10,7 @@ fn app_with(n: usize) -> (PhotocraftApp, egui::Context) {
     (app, egui::Context::default())
 }
 
-fn checked(app: &PhotocraftApp, id: &str) -> Option<bool> {
+fn checked(app: &PhotozApp, id: &str) -> Option<bool> {
     menu_items(app).into_iter().find(|i| i.id == id).and_then(|i| i.checked)
 }
 
@@ -264,7 +264,7 @@ fn apply_image_dialog_offers_source_layer_scale_and_offset() {
     app.run("edit.fill", json!({"color": "#406080"})).unwrap();
     app.sync_views();
     let background = app.session.active().unwrap().doc.walk()[0].2.name.clone();
-    let open = |app: &mut PhotocraftApp| menu(app, &ctx, "image.applyImage", json!({})).unwrap()["dialog"].as_u64().unwrap();
+    let open = |app: &mut PhotozApp| menu(app, &ctx, "image.applyImage", json!({})).unwrap()["dialog"].as_u64().unwrap();
     let d = open(&mut app);
     let fields = &app.ui.dialog_mut(d).unwrap().fields;
     assert_eq!(fields["sourceLayer"], "merged");
@@ -438,7 +438,7 @@ fn load_selection_without_alpha_channels_offers_the_composite() {
 }
 
 /// One frame of the shortcut handler with a plain Esc press.
-fn press_esc(app: &mut PhotocraftApp, ctx: &egui::Context) {
+fn press_esc(app: &mut PhotozApp, ctx: &egui::Context) {
     let key = egui::Key::Escape;
     let input = egui::RawInput {
         focused: true,

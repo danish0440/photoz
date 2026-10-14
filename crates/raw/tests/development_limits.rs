@@ -1,6 +1,6 @@
 //! Development limits and hostile public sensor metadata.
-use photocraft_raw::testgen::DngSpec;
-use photocraft_raw::*;
+use photoz_raw::testgen::DngSpec;
+use photoz_raw::*;
 
 fn small_sensor() -> Sensor {
     decode(&DngSpec::cfa(64, 48, vec![1000; 64 * 48]).build(), &Limits::default()).unwrap()

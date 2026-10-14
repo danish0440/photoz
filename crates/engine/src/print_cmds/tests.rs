@@ -1,8 +1,8 @@
 use super::*;
-use photocraft_doc::{Knot, NamedPath, Path, Subpath};
+use photoz_doc::{Knot, NamedPath, Path, Subpath};
 
 fn tmp(name: &str) -> String {
-    let d = std::env::temp_dir().join(format!("photocraft-print-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("photoz-print-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d.to_string_lossy().into_owned()
@@ -77,17 +77,17 @@ fn print_dry_run_renders_a_pdf_and_reports_the_platform_backend() {
     let scale = r["scale"].as_f64().unwrap();
     assert!(scale > 200.0, "fit to a landscape letter page: {scale}");
     assert!(s.execute("file.print", json!({"paper": "napkin", "dryRun": true})).is_err());
-    assert!(s.execute("file.print", json!({"colorHandling": "photocraftManages", "dryRun": true})).is_err(), "needs a printer profile");
+    assert!(s.execute("file.print", json!({"colorHandling": "photozManages", "dryRun": true})).is_err(), "needs a printer profile");
 }
 
 #[test]
-fn photocraft_manages_colors_converts_to_the_printer_profile() {
+fn photoz_manages_colors_converts_to_the_printer_profile() {
     let mut s = session("rgb", 8);
     let out = format!("{}/managed.pdf", tmp("managed"));
     let r = s
         .execute(
             "file.print",
-            json!({"output": out, "dryRun": true, "colorHandling": "photocraftManages", "printerProfile": "coated-cmyk", "intent": "perceptual", "bpc": false}),
+            json!({"output": out, "dryRun": true, "colorHandling": "photozManages", "printerProfile": "coated-cmyk", "intent": "perceptual", "bpc": false}),
         )
         .unwrap();
     assert_eq!(r["color"]["intent"], "perceptual");
@@ -156,16 +156,16 @@ fn printer_profile_can_be_an_installed_icc_file() {
     let dir = tmp("icc");
     let icc = format!("{dir}/My Paper.icc");
     let output = format!("{dir}/managed.pdf");
-    std::fs::write(&icc, photocraft_cms::Builtin::CoatedCmyk.profile().to_bytes().as_slice()).unwrap();
+    std::fs::write(&icc, photoz_cms::Builtin::CoatedCmyk.profile().to_bytes().as_slice()).unwrap();
     let mut s = session("rgb", 16);
     let r = s
-        .execute("file.print", json!({"output": output, "dryRun": true, "colorHandling": "photocraftManages", "printerProfile": icc, "emulsionDown": true}))
+        .execute("file.print", json!({"output": output, "dryRun": true, "colorHandling": "photozManages", "printerProfile": icc, "emulsionDown": true}))
         .unwrap();
     assert_eq!(r["color"]["printerProfile"], json!(icc));
     let (_, _, cs, data) = pdf_image(&std::fs::read(r["pdf"].as_str().unwrap()).unwrap());
     assert_eq!(cs, "[/ICCBased 7 0 R]");
     assert_eq!(data.len(), 300 * 150 * 4);
-    assert!(s.execute("file.print", json!({"dryRun": true, "colorHandling": "photocraftManages", "printerProfile": format!("{dir}/missing.icc")})).is_err());
+    assert!(s.execute("file.print", json!({"dryRun": true, "colorHandling": "photozManages", "printerProfile": format!("{dir}/missing.icc")})).is_err());
     let _ = std::fs::remove_file(r["pdf"].as_str().unwrap());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -202,7 +202,7 @@ fn package_copies_links_and_relinks() {
     assert!(std::path::Path::new(&copied).is_file());
     let docp = r["document"].as_str().unwrap();
     assert!(docp.ends_with("Print Me/Print Me.pcraft"));
-    let back = photocraft_io::import("Print Me.pcraft", &std::fs::read(docp).unwrap()).unwrap().document;
+    let back = photoz_io::import("Print Me.pcraft", &std::fs::read(docp).unwrap()).unwrap().document;
     let linked: Vec<String> = back
         .walk()
         .iter()
@@ -232,7 +232,7 @@ fn paths_export_as_illustrator_postscript() {
     s.edit("paths", |d, _| {
         let tri = Subpath::polygon(&[(10.0, 10.0), (100.0, 10.0), (50.0, 90.0)]);
         let mut curve = Subpath::polyline(&[(0.0, 0.0), (300.0, 150.0)]);
-        curve.knots[0] = Knot::smooth(photocraft_geom::Point::new(0.0, 0.0), photocraft_geom::Point::new(0.0, 0.0), photocraft_geom::Point::new(50.0, 0.0));
+        curve.knots[0] = Knot::smooth(photoz_geom::Point::new(0.0, 0.0), photoz_geom::Point::new(0.0, 0.0), photoz_geom::Point::new(50.0, 0.0));
         d.paths.push(NamedPath { name: "Shapes".into(), path: Path::new(vec![tri, curve]), psd_raw: None });
         Ok(())
     })
@@ -284,7 +284,7 @@ fn print_without_sending_requires_output_unless_dry_run_and_forgets_send_overrid
 #[cfg(unix)]
 #[test]
 fn spool_transport_streams_pdf_and_propagates_refusal() {
-    const CHILD: &str = "PHOTOCRAFT_TEST_PRINT_TRANSPORT";
+    const CHILD: &str = "PHOTOZ_TEST_PRINT_TRANSPORT";
     if let Ok(dir) = std::env::var(CHILD) {
         let mut s = session("rgb", 8);
         let source = s.active().unwrap().doc.id;
@@ -338,7 +338,7 @@ fn spool_transport_streams_pdf_and_propagates_refusal() {
     let script = dir.path().join("lp");
     std::fs::write(
         &script,
-        b"#!/bin/sh\nif [ \"$2\" = Refuse ]; then echo 'queue refused' >&2; exit 1; fi\nprintf '%s\\n' \"$@\" > \"$PHOTOCRAFT_TEST_PRINT_TRANSPORT/args\"\n/bin/cat > \"$PHOTOCRAFT_TEST_PRINT_TRANSPORT/received.pdf\"\necho 'request id is Office-42 (0 file(s))'\n",
+        b"#!/bin/sh\nif [ \"$2\" = Refuse ]; then echo 'queue refused' >&2; exit 1; fi\nprintf '%s\\n' \"$@\" > \"$PHOTOZ_TEST_PRINT_TRANSPORT/args\"\n/bin/cat > \"$PHOTOZ_TEST_PRINT_TRANSPORT/received.pdf\"\necho 'request id is Office-42 (0 file(s))'\n",
     ).unwrap();
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
     let result = std::process::Command::new(std::env::current_exe().unwrap())
@@ -346,8 +346,8 @@ fn spool_transport_streams_pdf_and_propagates_refusal() {
         .env(CHILD, dir.path())
         .env("PATH", dir.path())
         // The child spools into the fake `lp` above, so a shell that blocks real printing
-        // (`PHOTOCRAFT_NO_PRINT`, see `disabled_printing_never_spools`) must not stop it.
-        .env_remove("PHOTOCRAFT_NO_PRINT")
+        // (`PHOTOZ_NO_PRINT`, see `disabled_printing_never_spools`) must not stop it.
+        .env_remove("PHOTOZ_NO_PRINT")
         .output()
         .unwrap();
     assert!(result.status.success(), "{}\n{}", String::from_utf8_lossy(&result.stdout), String::from_utf8_lossy(&result.stderr));

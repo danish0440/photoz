@@ -4190,7 +4190,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft"
+name = "photoz"
 version = "0.8.2"
 dependencies = [
  "arboard",
@@ -4207,19 +4207,19 @@ dependencies = [
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
  "open",
- "photocraft-automation",
- "photocraft-cms",
- "photocraft-codecs",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-engine",
- "photocraft-format",
- "photocraft-geom",
- "photocraft-io",
- "photocraft-raster",
- "photocraft-tablet",
- "photocraft-ui-egui",
+ "photoz-automation",
+ "photoz-cms",
+ "photoz-codecs",
+ "photoz-color",
+ "photoz-compose",
+ "photoz-doc",
+ "photoz-engine",
+ "photoz-format",
+ "photoz-geom",
+ "photoz-io",
+ "photoz-raster",
+ "photoz-tablet",
+ "photoz-ui-egui",
  "resvg",
  "rfd",
  "ron",
@@ -4234,7 +4234,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-affinity"
+name = "photoz-affinity"
 version = "0.8.2"
 dependencies = [
  "crc32fast",
@@ -4244,12 +4244,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-algo"
+name = "photoz-algo"
 version = "0.8.2"
 dependencies = [
- "photocraft-color",
- "photocraft-geom",
- "photocraft-raster",
+ "photoz-color",
+ "photoz-geom",
+ "photoz-raster",
  "rayon",
  "rustfft",
  "serde",
@@ -4257,19 +4257,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-automation"
+name = "photoz-automation"
 version = "0.8.2"
 dependencies = [
  "base64",
  "cap-std",
  "getrandom 0.3.4",
- "photocraft-codecs",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-engine",
- "photocraft-format",
- "photocraft-geom",
- "photocraft-io",
+ "photoz-codecs",
+ "photoz-compose",
+ "photoz-doc",
+ "photoz-engine",
+ "photoz-format",
+ "photoz-geom",
+ "photoz-io",
  "rmcp",
  "schemars",
  "serde",
@@ -4279,21 +4279,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-cli"
+name = "photoz-cli"
 version = "0.8.2"
 dependencies = [
- "photocraft-automation",
- "photocraft-codecs",
- "photocraft-engine",
- "photocraft-format",
- "photocraft-io",
+ "photoz-automation",
+ "photoz-codecs",
+ "photoz-engine",
+ "photoz-format",
+ "photoz-io",
  "serde_json",
  "tokio",
  "winresource",
 ]
 
 [[package]]
-name = "photocraft-cms"
+name = "photoz-cms"
 version = "0.8.2"
 dependencies = [
  "moxcms",
@@ -4301,7 +4301,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-codecs"
+name = "photoz-codecs"
 version = "0.8.2"
 dependencies = [
  "exr",
@@ -4310,7 +4310,7 @@ dependencies = [
  "image",
  "image-webp",
  "jpeg-encoder",
- "photocraft-heif",
+ "photoz-heif",
  "png 0.18.1",
  "proptest",
  "rayon",
@@ -4322,65 +4322,65 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-color"
+name = "photoz-color"
 version = "0.8.2"
 dependencies = [
- "photocraft-cms",
+ "photoz-cms",
  "serde",
 ]
 
 [[package]]
-name = "photocraft-compose"
+name = "photoz-compose"
 version = "0.8.2"
 dependencies = [
  "criterion",
- "photocraft-color",
- "photocraft-doc",
- "photocraft-geom",
- "photocraft-paint",
- "photocraft-raster",
- "photocraft-vector",
+ "photoz-color",
+ "photoz-doc",
+ "photoz-geom",
+ "photoz-paint",
+ "photoz-raster",
+ "photoz-vector",
  "proptest",
  "rayon",
 ]
 
 [[package]]
-name = "photocraft-doc"
+name = "photoz-doc"
 version = "0.8.2"
 dependencies = [
- "photocraft-color",
- "photocraft-geom",
- "photocraft-raster",
+ "photoz-color",
+ "photoz-geom",
+ "photoz-raster",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "photocraft-engine"
+name = "photoz-engine"
 version = "0.8.2"
 dependencies = [
  "blake3",
  "craft-print",
  "exr",
  "flate2",
- "photocraft-affinity",
- "photocraft-algo",
- "photocraft-cms",
- "photocraft-codecs",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-format",
- "photocraft-geom",
- "photocraft-io",
- "photocraft-ops",
- "photocraft-paint",
- "photocraft-plugins",
- "photocraft-psd",
- "photocraft-raster",
- "photocraft-raw",
- "photocraft-text",
- "photocraft-vector",
+ "photoz-affinity",
+ "photoz-algo",
+ "photoz-cms",
+ "photoz-codecs",
+ "photoz-color",
+ "photoz-compose",
+ "photoz-doc",
+ "photoz-format",
+ "photoz-geom",
+ "photoz-io",
+ "photoz-ops",
+ "photoz-paint",
+ "photoz-plugins",
+ "photoz-psd",
+ "photoz-raster",
+ "photoz-raw",
+ "photoz-text",
+ "photoz-vector",
  "rayon",
  "roxmltree",
  "serde",
@@ -4391,18 +4391,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-format"
+name = "photoz-format"
 version = "0.8.2"
 dependencies = [
  "blake3",
  "crc32fast",
  "flate2",
  "libc",
- "photocraft-codecs",
- "photocraft-color",
- "photocraft-doc",
- "photocraft-geom",
- "photocraft-raster",
+ "photoz-codecs",
+ "photoz-color",
+ "photoz-doc",
+ "photoz-geom",
+ "photoz-raster",
  "proptest",
  "rustix 1.1.5",
  "ruzstd",
@@ -4412,58 +4412,58 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-geom"
+name = "photoz-geom"
 version = "0.8.2"
 dependencies = [
  "serde",
 ]
 
 [[package]]
-name = "photocraft-gpu"
+name = "photoz-gpu"
 version = "0.8.2"
 dependencies = [
  "half",
  "log",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-geom",
- "photocraft-raster",
- "photocraft-vector",
+ "photoz-color",
+ "photoz-compose",
+ "photoz-doc",
+ "photoz-geom",
+ "photoz-raster",
+ "photoz-vector",
  "pollster 1.0.1",
  "rayon",
  "wgpu",
 ]
 
 [[package]]
-name = "photocraft-heif"
+name = "photoz-heif"
 version = "0.8.2"
 dependencies = [
  "heic-rs",
 ]
 
 [[package]]
-name = "photocraft-io"
+name = "photoz-io"
 version = "0.8.2"
 dependencies = [
  "blake3",
  "crc32fast",
  "flate2",
- "photocraft-affinity",
- "photocraft-algo",
- "photocraft-cms",
- "photocraft-codecs",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-format",
- "photocraft-geom",
- "photocraft-paint",
- "photocraft-psd",
- "photocraft-raster",
- "photocraft-raw",
- "photocraft-text",
- "photocraft-vector",
+ "photoz-affinity",
+ "photoz-algo",
+ "photoz-cms",
+ "photoz-codecs",
+ "photoz-color",
+ "photoz-compose",
+ "photoz-doc",
+ "photoz-format",
+ "photoz-geom",
+ "photoz-paint",
+ "photoz-psd",
+ "photoz-raster",
+ "photoz-raw",
+ "photoz-text",
+ "photoz-vector",
  "proptest",
  "resvg",
  "roxmltree",
@@ -4472,30 +4472,30 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-ops"
+name = "photoz-ops"
 version = "0.8.2"
 dependencies = [
- "photocraft-doc",
+ "photoz-doc",
 ]
 
 [[package]]
-name = "photocraft-paint"
+name = "photoz-paint"
 version = "0.8.2"
 dependencies = [
- "photocraft-color",
- "photocraft-geom",
- "photocraft-raster",
+ "photoz-color",
+ "photoz-geom",
+ "photoz-raster",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "photocraft-plugins"
+name = "photoz-plugins"
 version = "0.8.2"
 dependencies = [
- "photocraft-color",
- "photocraft-geom",
- "photocraft-raster",
+ "photoz-color",
+ "photoz-geom",
+ "photoz-raster",
  "rayon",
  "serde",
  "serde_json",
@@ -4505,34 +4505,34 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-psd"
+name = "photoz-psd"
 version = "0.8.2"
 dependencies = [
  "flate2",
- "photocraft-psd",
+ "photoz-psd",
  "proptest",
  "serde",
  "thiserror 2.0.21",
 ]
 
 [[package]]
-name = "photocraft-raster"
+name = "photoz-raster"
 version = "0.8.2"
 dependencies = [
- "photocraft-color",
- "photocraft-geom",
+ "photoz-color",
+ "photoz-geom",
  "proptest",
  "serde",
 ]
 
 [[package]]
-name = "photocraft-raw"
+name = "photoz-raw"
 version = "0.8.2"
 dependencies = [
  "flate2",
  "image",
  "jxl-oxide",
- "photocraft-raw",
+ "photoz-raw",
  "png 0.18.1",
  "rayon",
  "zune-core 0.5.3",
@@ -4541,7 +4541,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-tablet"
+name = "photoz-tablet"
 version = "0.8.2"
 dependencies = [
  "block2 0.6.2",
@@ -4553,32 +4553,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-testkit"
+name = "photoz-testkit"
 version = "0.8.2"
 dependencies = [
  "memory-stats",
- "photocraft-color",
- "photocraft-geom",
- "photocraft-raster",
+ "photoz-color",
+ "photoz-geom",
+ "photoz-raster",
  "serde_json",
 ]
 
 [[package]]
-name = "photocraft-text"
+name = "photoz-text"
 version = "0.8.2"
 dependencies = [
  "flate2",
  "parley",
- "photocraft-color",
- "photocraft-doc",
- "photocraft-geom",
- "photocraft-psd",
- "photocraft-raster",
+ "photoz-color",
+ "photoz-doc",
+ "photoz-geom",
+ "photoz-psd",
+ "photoz-raster",
  "skrifa",
 ]
 
 [[package]]
-name = "photocraft-ui-egui"
+name = "photoz-ui-egui"
 version = "0.8.2"
 dependencies = [
  "base64",
@@ -4590,25 +4590,25 @@ dependencies = [
  "epaint_default_fonts",
  "flate2",
  "log",
- "photocraft-algo",
- "photocraft-cms",
- "photocraft-codecs",
- "photocraft-color",
- "photocraft-compose",
- "photocraft-doc",
- "photocraft-engine",
- "photocraft-format",
- "photocraft-geom",
- "photocraft-gpu",
- "photocraft-io",
- "photocraft-paint",
- "photocraft-plugins",
- "photocraft-psd",
- "photocraft-raster",
- "photocraft-raw",
- "photocraft-testkit",
- "photocraft-text",
- "photocraft-vector",
+ "photoz-algo",
+ "photoz-cms",
+ "photoz-codecs",
+ "photoz-color",
+ "photoz-compose",
+ "photoz-doc",
+ "photoz-engine",
+ "photoz-format",
+ "photoz-geom",
+ "photoz-gpu",
+ "photoz-io",
+ "photoz-paint",
+ "photoz-plugins",
+ "photoz-psd",
+ "photoz-raster",
+ "photoz-raw",
+ "photoz-testkit",
+ "photoz-text",
+ "photoz-vector",
  "rayon",
  "serde",
  "serde_json",
@@ -4618,31 +4618,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "photocraft-vector"
+name = "photoz-vector"
 version = "0.8.2"
 dependencies = [
- "photocraft-color",
- "photocraft-doc",
- "photocraft-geom",
- "photocraft-raster",
+ "photoz-color",
+ "photoz-doc",
+ "photoz-geom",
+ "photoz-raster",
  "rayon",
 ]
 
 [[package]]
-name = "photocraft-web"
+name = "photoz-web"
 version = "0.8.2"
 dependencies = [
  "eframe",
  "egui",
  "js-sys",
  "log",
- "photocraft-codecs",
- "photocraft-doc",
- "photocraft-engine",
- "photocraft-io",
- "photocraft-paint",
- "photocraft-psd",
- "photocraft-ui-egui",
+ "photoz-codecs",
+ "photoz-doc",
+ "photoz-engine",
+ "photoz-io",
+ "photoz-paint",
+ "photoz-psd",
+ "photoz-ui-egui",
  "rfd",
  "serde_json",
  "wasm-bindgen",

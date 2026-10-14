@@ -1,9 +1,9 @@
 //! The command registry. Ids follow Photoshop's menu structure (see the parity checklist).
 
-use photocraft_color::{BlendMode, Color, ColorMode, SampleType};
-use photocraft_doc::{Adjustment, Document, Fill, Layer, LayerContent, LayerId, LayerMask, Size};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use photoz_color::{BlendMode, Color, ColorMode, SampleType};
+use photoz_doc::{Adjustment, Document, Fill, Layer, LayerContent, LayerId, LayerMask, Size};
+use photoz_geom::Rect;
+use photoz_raster::Surface;
 use serde_json::{Value, json};
 
 use crate::{EngineError, Result, Session, inspect, pixels};
@@ -66,7 +66,7 @@ pub(crate) fn has_paintable(s: &Session) -> std::result::Result<(), String> {
 }
 
 /// Surface a paint command writes to: the layer's pixels, or its mask with `"target":"mask"`.
-pub(crate) fn paint_surface<'a>(doc: &'a mut Document, id: LayerId, p: &Value) -> Result<&'a mut photocraft_raster::Surface> {
+pub(crate) fn paint_surface<'a>(doc: &'a mut Document, id: LayerId, p: &Value) -> Result<&'a mut photoz_raster::Surface> {
     if is_mask_target(p) {
         check_all_unlocked(doc, id)?;
     } else {
@@ -323,7 +323,7 @@ pub(crate) fn mask_new_layer(doc: &Document, l: &mut Layer, p: &Value, cmd: &str
         Some(v) => Some(crate::vector_cmds::parse_path(v).map_err(|e| bad(cmd, e))?),
     };
     match path {
-        Some(path) => l.vector_mask = Some(photocraft_doc::VectorMask::new(path)),
+        Some(path) => l.vector_mask = Some(photoz_doc::VectorMask::new(path)),
         None => l.mask = Some(mask_at_depth(selection_mask(doc)?.unwrap_or_else(LayerMask::reveal_all), doc.depth)?),
     }
     Ok(())
@@ -483,7 +483,7 @@ fn build() -> Vec<CommandSpec> {
         // Select
         cmd!("select.all", "All", ["Select"], Some("Cmd+A"), "{}", has_doc, |s, _| {
             s.edit("Select All", |doc, _| {
-                let mut m = Surface::new(photocraft_color::PixelFormat::GRAY8);
+                let mut m = Surface::new(photoz_color::PixelFormat::GRAY8);
                 m.fill_rect(doc.bounds(), &[1.0]);
                 doc.selection = Some(m);
                 Ok(())
@@ -499,10 +499,10 @@ fn build() -> Vec<CommandSpec> {
         }),
         cmd!("select.inverse", "Inverse", ["Select"], Some("Cmd+Shift+I"), "{}", has_selection, |s, _| {
             s.edit("Inverse", |doc, _| {
-                let old = doc.selection.take().unwrap_or_else(|| Surface::new(photocraft_color::PixelFormat::GRAY8));
+                let old = doc.selection.take().unwrap_or_else(|| Surface::new(photoz_color::PixelFormat::GRAY8));
                 let b = doc.bounds();
                 let data: Vec<f32> = old.read_region(b).into_iter().map(|v| 1.0 - v).collect();
-                let mut m = Surface::new(photocraft_color::PixelFormat::GRAY8);
+                let mut m = Surface::new(photoz_color::PixelFormat::GRAY8);
                 m.write_region(b, &data);
                 m.prune();
                 doc.selection = Some(m);
@@ -538,11 +538,11 @@ fn build() -> Vec<CommandSpec> {
                     let area = doc.bounds();
                     // A marquee dragged past the canvas stops at its edge (Photoshop); the ellipse
                     // keeps the dragged shape and is only cut there.
-                    use photocraft_algo::selection as sel;
+                    use photoz_algo::selection as sel;
                     let shape = if ellipse {
                         sel::ellipse_surface(r, area, aa)
                     } else {
-                        let mut s = Surface::new(photocraft_color::PixelFormat::GRAY8);
+                        let mut s = Surface::new(photoz_color::PixelFormat::GRAY8);
                         s.fill_rect(r.intersect(&area), &[1.0]);
                         s
                     };
@@ -557,7 +557,7 @@ fn build() -> Vec<CommandSpec> {
                         ("subtract", Some(o)) => sel::combine_surfaces(&o, &shape, area, |a, b| a * (1.0 - b)),
                         ("intersect", Some(o)) => sel::combine_surfaces(&o, &shape, area, |a, b| a.min(b)),
                         // With no existing selection, neither operation can select new pixels.
-                        ("subtract" | "intersect", None) => Surface::new(photocraft_color::PixelFormat::GRAY8),
+                        ("subtract" | "intersect", None) => Surface::new(photoz_color::PixelFormat::GRAY8),
                         _ => shape,
                     };
                     // Nothing selected on the canvas (e.g. dragged entirely outside it) deselects.
@@ -830,7 +830,7 @@ fn build() -> Vec<CommandSpec> {
                 let mut bg = Layer::raster("Background", fmt);
                 bg.locks.transparency = true;
                 bg.locks.position = true;
-                *crate::pixels_mut(&mut bg)? = photocraft_compose::flatten_to_surface(doc, fmt, Some([1.0, 1.0, 1.0]));
+                *crate::pixels_mut(&mut bg)? = photoz_compose::flatten_to_surface(doc, fmt, Some([1.0, 1.0, 1.0]));
                 *active = Some(bg.id);
                 doc.layers = vec![bg];
                 Ok(())
@@ -962,7 +962,7 @@ fn build() -> Vec<CommandSpec> {
                     saturation: -100.0,
                     lightness: 0.0,
                     colorize: false,
-                    ranges: photocraft_doc::adjust::HueRange::defaults(),
+                    ranges: photoz_doc::adjust::HueRange::defaults(),
                 },
                 &Value::Null,
             )
@@ -1112,7 +1112,7 @@ fn build() -> Vec<CommandSpec> {
                 let (x, y) = (coord("x")?, coord("y")?);
                 let d = s.active().ok_or(EngineError::NoDocument)?;
                 // At i32::MAX the 1x1 rect saturates to empty: a pixel that far out is transparent.
-                let px = photocraft_compose::render(&d.doc, Rect::from_xywh(x, y, 1, 1)).px.first().copied().unwrap_or_default();
+                let px = photoz_compose::render(&d.doc, Rect::from_xywh(x, y, 1, 1)).px.first().copied().unwrap_or_default();
                 Ok(json!(px))
             },
             journal: false,
@@ -1457,11 +1457,11 @@ pub(crate) fn translate_layer(doc: &Document, l: &mut Layer, dx: i32, dy: i32) {
     match &mut l.content {
         LayerContent::Raster(s) => *s = translate_surface(s, dx, dy),
         LayerContent::Text(t) => {
-            t.transform = photocraft_geom::Affine::translate(dx as f64, dy as f64).mul(&t.transform);
+            t.transform = photoz_geom::Affine::translate(dx as f64, dy as f64).mul(&t.transform);
             // A whole-pixel move shifts the rendered text and its PSD position as they are.
             // Re-rendering would replace Photoshop's rendering of imported type, and drop the
             // text when its font is missing (artboard export, moving type with the Move tool).
-            let raw = t.psd_raw.as_deref().map(|r| photocraft_text::psd::translate_tysh(r, f64::from(dx), f64::from(dy)));
+            let raw = t.psd_raw.as_deref().map(|r| photoz_text::psd::translate_tysh(r, f64::from(dx), f64::from(dy)));
             match (&mut t.cache, raw) {
                 (Some(c), Some(Some(r))) => {
                     *c = translate_surface(c, dx, dy);
@@ -1511,17 +1511,17 @@ fn merge_group(s: &mut Session, id: LayerId) -> Result<Value> {
             return Err(EngineError::Other("the group is hidden".into()));
         }
         let fmt = doc.pixel_format();
-        let fmt = photocraft_color::PixelFormat::new(fmt.mode, fmt.sample, true);
+        let fmt = photoz_color::PixelFormat::new(fmt.mode, fmt.sample, true);
         let mut solo = group.clone();
         solo.opacity = 1.0;
-        solo.blend = photocraft_doc::BlendMode::Normal;
+        solo.blend = photoz_doc::BlendMode::Normal;
         solo.clipped = false;
         let mut tmp = doc.clone();
         tmp.layers = vec![solo];
         let mut merged = Layer::new(group.name.clone(), LayerContent::Raster(pixels::composite_layers(&tmp, fmt, None)));
         merged.id = group.id;
         merged.opacity = group.opacity;
-        merged.blend = if group.blend == photocraft_doc::BlendMode::PassThrough { photocraft_doc::BlendMode::Normal } else { group.blend };
+        merged.blend = if group.blend == photoz_doc::BlendMode::PassThrough { photoz_doc::BlendMode::Normal } else { group.blend };
         merged.clipped = group.clipped;
         merged.locks = group.locks;
         *doc.layer_mut(id).ok_or(EngineError::NoLayer(id))? = merged;

@@ -3,7 +3,7 @@
 
 mod common;
 use common::*;
-use photocraft_codecs::*;
+use photoz_codecs::*;
 
 // ---------------------------------------------------------------------------
 // Symmetric guarantee

@@ -165,7 +165,7 @@ pub(crate) fn validate_params(id: &str, params: &Value) -> Result<()> {
 mod tests {
     use std::sync::Arc;
 
-    use photocraft_geom::Rect;
+    use photoz_geom::Rect;
     use serde_json::json;
 
     use super::*;
