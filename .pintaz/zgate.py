@@ -156,7 +156,9 @@ def check(base: str, up: str, merged: str) -> list[str]:
     readme = text(blob(merged, "README.md"))
     if "Based on " not in readme or "PINTAZ" not in readme:
         fails.append("G-NOTICE: README.md lacks the credit line")
-    if "about credit inserted in: NOT FOUND" in rep:
+    # the launcher has no About window: its credit is the Settings patch (launcher patches line)
+    launcher_credit = re.search(r"^launcher patches: \[.*crates/ui-egui/src/dialogs\.rs'\]", rep, flags=re.M)
+    if "about credit inserted in: NOT FOUND" in rep and not launcher_credit:
         fails.append("G-NOTICE: rebrand.py could not insert the About credit")
     for p in ("LICENSE-MIT", "LICENSE-APACHE"):
         if p in recorded and blob(merged, p) is None:

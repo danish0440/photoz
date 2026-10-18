@@ -121,6 +121,8 @@ def phrase_rules(up_id: str, launcher: bool):
         (re.compile(r"(?<![/\w.])getartcraft\.com/apps/([a-z0-9-]+)"),
          lambda m: f"github.com/{OWNER}/{APPS[m.group(1)][2]}" if m.group(1) in APPS else f"github.com/{OWNER}/{zid}"),
         (re.compile(r"\bon Discord\b"), lambda m: "on GitHub"),
+        # macOS About panel (Credits.rtf, 18 Oct 2026): the visible link text, not only the URL
+        (re.compile(r"(\\fldrslt )getartcraft\.com\}"), lambda m: m.group(1) + f"github.com/{OWNER}/{zid}}}"),
         # our own repo (never a cargo git dependency on another storytold repo)
         (re.compile(r"(?<!git = \")(?<!git\+)(https://github\.com/)?storytold/" + re.escape(up_repo) + r"(?![-\w])"),
          lambda m: (m.group(1) or "") + f"{OWNER}/{zid}"),
@@ -703,12 +705,13 @@ def reorder_suite(path: Path):
     m = re.search(r"(pub const SUITE: \[CraftApp; 13\] = \[\n)(.*?)(\n\];)", t, flags=re.S)
     if not m:
         raise SystemExit("reorder_suite: SUITE array not found")
-    blocks = re.findall(r"    (?:app\(\n.*?\n    \),|CraftApp \{\n.*?\n    \},)", m.group(2), flags=re.S)
+    # upstream writes a block over several lines or (since 17 Oct 2026) some on one line
+    blocks = re.findall(r"    (?:app\(\n.*?\n    \),|CraftApp \{\n.*?\n    \},|app\(\"[^\n]*\),)", m.group(2), flags=re.S)
     if len(blocks) != 13:
         raise SystemExit(f"reorder_suite: expected 13 app blocks, found {len(blocks)}")
     by = {}
     for b in blocks:
-        first = re.search(r'app\(\n\s+"([a-z]+)"', b).group(1)
+        first = re.search(r'app\(\s*"([a-z]+)"', b).group(1)
         zid = UPSTREAM_TO_Z.get(first, first)
         col = Z_COLOURS[zid]
         b = re.sub(r"\[\[0x[0-9a-f]{2}, 0x[0-9a-f]{2}, 0x[0-9a-f]{2}\], \[0x[0-9a-f]{2}, 0x[0-9a-f]{2}, 0x[0-9a-f]{2}\], \[0x[0-9a-f]{2}, 0x[0-9a-f]{2}, 0x[0-9a-f]{2}\]\]",
