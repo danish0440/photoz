@@ -606,8 +606,8 @@ def write_readme(root: Path, up_id: str):
         f"# {zname}\n\nFree app by PINTAZ. Download: the [latest release](https://github.com/{OWNER}/{zid}/releases/latest)"
         f"{' (one download gets all the Z apps)' if zid == 'appz' else ''}.\n\n"
         f"{credit_line(up_id)} See NOTICE, LICENSE-MIT and LICENSE-APACHE.\n\n"
-        f"This repository follows upstream (`storytold/{up_repo}`) through `.github/workflows/upstream-sync-z.yml`, "
-        f"which re-applies `.pintaz/rebrand.py` and opens a pull request. Builds: `.github/workflows/release-z.yml` "
+        f"This repository follows upstream (`storytold/{up_repo}`) every day through `.github/workflows/upstream-sync-z.yml`, "
+        f"which re-applies `.pintaz/rebrand.py`, runs the gates in `.pintaz/zgate.py` and, when they pass, merges and releases. Builds: `.github/workflows/release-z.yml` "
         f"(unsigned Windows x64 MSI + portable zip, macOS universal DMG).\n", encoding="utf-8")
 
 
@@ -765,6 +765,10 @@ def main():
         if (dst / sub).exists():
             shutil.rmtree(dst / sub)
         shutil.copytree(HERE / sub, dst / sub)
+    # daily-sync gates (zgate.py, zsmoke.py) and their per-fork records travel with the tool
+    for name in ("zgate.py", "zsmoke.py", "licence.sha256", "brand-allow.txt", "workflows-allow.txt"):
+        if (HERE / name).is_file() and (HERE / name).resolve() != (dst / name).resolve():
+            shutil.copy2(HERE / name, dst / name)
     left = leftovers(root)
     rep = [f"rebrand {up_id} -> {zname}", f"about credit inserted in: {about or 'NOT FOUND'}", f"launcher patches: {lp}",
            f"lines still naming ArtCraft/getartcraft/discord (non-doc): {len(left)}"] + left

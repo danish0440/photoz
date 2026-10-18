@@ -1,0 +1,4 @@
+crates/ui-egui/src/dialogs.rs: // PINTAZ-ABOUT: required credit (Apache-2.0 change notice; ArtCraft brand licence)
+crates/ui-egui/src/dialogs.rs: ui.weak("Based on PhotoCraft by Storytold (ArtCraft), Apache-2.0. Changes by PINTAZ TECHNOLOGIES.");
+crates/ui-egui/src/links.rs: //! bar all open these. URLs follow the crafting-app pattern (`getartcraft.com/apps/<app>`,
+crates/ui-egui/src/links.rs: /// "PhotoZ website · GitHub · ArtCraft" as links, centred. Clicks route through [`open`] (the
