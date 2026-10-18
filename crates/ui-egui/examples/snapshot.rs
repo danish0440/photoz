@@ -1,4 +1,4 @@
-//! Render the full Photoz UI offscreen (no window, no focus stealing) and save a PNG.
+//! Render the full PhotoZ UI offscreen (no window, no focus stealing) and save a PNG.
 //!
 //! ```sh
 //! cargo run --release -p photoz-ui-egui --example snapshot -- \

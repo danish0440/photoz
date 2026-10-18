@@ -31,6 +31,7 @@ photoz-text = { workspace = true }
 photoz-paint = { workspace = true }
 photoz-vector = { workspace = true }
 photoz-format = { path = "../format" }
+craft-docpath = { workspace = true }
 thiserror = { workspace = true }
 serde_json = { workspace = true }
 blake3 = { version = "1.8", default-features = false, features = ["pure"] }

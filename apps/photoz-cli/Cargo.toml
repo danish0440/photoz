@@ -1,6 +1,6 @@
 [package]
 name = "photoz-cli"
-description = "Headless Photoz: convert, inspect, run commands, batch, MCP server"
+description = "Headless PhotoZ: convert, inspect, run commands, batch, MCP server"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

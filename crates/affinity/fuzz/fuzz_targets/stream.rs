@@ -7,5 +7,5 @@ use libfuzzer_sys::fuzz_target;
 fuzz_target!(|stream: &[u8]| {
     let _ = photoz_affinity::stream::parse(stream);
     let file = photoz_affinity::synth::container(&[("doc.dat", stream, photoz_affinity::synth::Method::Stored)], None);
-    let _ = photoz_affinity::read(&file, photoz_affinity::Limits { max_entry: 16 << 20, max_total: 64 << 20 });
+    let _ = photoz_affinity::read(&file, photoz_affinity::Limits { max_entry: 16 << 20, max_total: 64 << 20, max_pixel_bytes: 64 << 20 });
 });

@@ -1,4 +1,4 @@
-//! The Photoz document model: pure data, no rendering, no UI.
+//! The PhotoZ document model: pure data, no rendering, no UI.
 //!
 //! Layer order: inside every group (and the root), `children[0]` is the **bottom** layer, matching
 //! compositing order and the PSD file order. UIs display the list reversed.
