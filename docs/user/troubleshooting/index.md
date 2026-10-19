@@ -1,0 +1,11 @@
+---
+title: Troubleshooting
+description: Fixes and workarounds for known PhotoZ problems.
+order: 30
+verified: 0.8.2
+---
+
+- [PhotoZ does not start](photoz-does-not-start.md)
+- [The Windows taskbar turns black when PhotoZ is maximized](taskbar-turns-black.md)
+- [Text moves when I start editing a PSD text layer](text-moves-when-editing.md)
+- [Get help with a problem](get-help.md)
