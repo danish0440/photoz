@@ -248,7 +248,9 @@ The desktop app stores them in `preferences.json` in the platform config directo
 `~/Library/Application Support/Photoz`, Windows `%APPDATA%\Photoz`, Linux
 `$XDG_CONFIG_HOME/photoz`; override with `PHOTOZ_CONFIG_DIR`); autosaves go to its
 `Recovery` folder (on Windows to `%LOCALAPPDATA%\Photoz\Recovery`, out of the roaming
-profile; autosaves left by earlier versions move there at startup), and the window size and
+profile, and on Linux to `$XDG_STATE_HOME/photoz/Recovery`, by default
+`~/.local/state/photoz/Recovery`, out of the config folder; autosaves left by earlier
+versions move there at startup), and the window size and
 position, the dock width and floating-panel geometry
 to `ui.ron` beside it (a file holding values that would crash startup is discarded). In portable mode (a `portable.txt` or `PhotoZ.portable` file beside the
 executable, as in the Windows portable zip) that directory is `PhotoZData` next to the

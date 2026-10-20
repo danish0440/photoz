@@ -4972,6 +4972,7 @@ dependencies = [
  "photoz-color",
  "photoz-geom",
  "proptest",
+ "rayon",
  "serde",
 ]
 
@@ -5024,6 +5025,7 @@ dependencies = [
  "photoz-geom",
  "photoz-psd",
  "photoz-raster",
+ "rayon",
  "skrifa",
 ]
 

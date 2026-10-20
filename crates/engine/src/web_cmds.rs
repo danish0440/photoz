@@ -586,7 +586,7 @@ pub fn optimize(
             let bytes = if st.format == WebFormat::Gif {
                 photoz_codecs::web::encode_gif_indexed(ww, hh, &idx, &pal, tt, st.interlaced).map_err(e)?
             } else {
-                photoz_codecs::encode_png_indexed(ww, hh, &idx, &pal, tt, None).map_err(e)?
+                photoz_codecs::encode_png_indexed(ww, hh, &idx, &pal, tt, None, None).map_err(e)?
             };
             if preview {
                 indices = idx;
