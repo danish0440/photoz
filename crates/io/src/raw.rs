@@ -15,7 +15,7 @@ use std::sync::Arc;
 use photoz_cms::{Builtin, Intent, Profile, Transform};
 use photoz_codecs::{self as codecs, ChannelLayout, Format, Image, SampleType};
 use photoz_raw::{CameraLook, DevelopOptions, Limits, PreviewColorSpace, RawError, Reference, Sensor, WhiteBalance};
-pub use photoz_raw::{Tone, retone};
+pub use photoz_raw::{EXTENSIONS, Tone, retone};
 
 use crate::flat::image_to_document;
 use crate::{ImportResult, IoError};
