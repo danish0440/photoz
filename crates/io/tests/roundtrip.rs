@@ -340,12 +340,14 @@ fn effects_roundtrip_typed_and_raw() {
             size: 3.0,
             position: StrokePosition::Center,
             paint: FxPaint::Color(photoz_color::Color::rgb(0.0, 1.0, 0.0)),
+            overprint: false,
         }),
         Effect::Stroke(StrokeFx {
             common: FxCommon::new(photoz_color::BlendMode::Normal, 0.5),
             size: 6.0,
             position: StrokePosition::Outside,
             paint: FxPaint::Color(photoz_color::Color::rgb(0.0, 0.0, 1.0)),
+            overprint: false,
         }),
     ];
     let back = roundtrip(&d);

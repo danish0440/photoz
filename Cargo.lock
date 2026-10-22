@@ -4638,7 +4638,7 @@ dependencies = [
 
 [[package]]
 name = "photoz"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "arboard",
  "async-io",
@@ -4683,7 +4683,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-affinity"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "crc32fast",
  "flate2",
@@ -4693,7 +4693,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-algo"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "photoz-color",
  "photoz-geom",
@@ -4706,7 +4706,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-automation"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "base64 0.22.1",
  "cap-std",
@@ -4729,7 +4729,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-cli"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "photoz-automation",
  "photoz-codecs",
@@ -4743,7 +4743,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-cms"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "moxcms",
  "rayon",
@@ -4751,7 +4751,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-codecs"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "exr",
  "flate2",
@@ -4772,7 +4772,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-color"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "photoz-cms",
  "serde",
@@ -4780,7 +4780,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-compose"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "criterion",
  "photoz-color",
@@ -4795,7 +4795,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-doc"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "photoz-color",
  "photoz-geom",
@@ -4806,7 +4806,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-engine"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "blake3",
  "craft-print",
@@ -4844,7 +4844,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-format"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "blake3",
  "crc32fast",
@@ -4867,17 +4867,18 @@ dependencies = [
 
 [[package]]
 name = "photoz-geom"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "photoz-gpu"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "half",
  "log",
+ "photoz-cms",
  "photoz-color",
  "photoz-compose",
  "photoz-doc",
@@ -4891,14 +4892,14 @@ dependencies = [
 
 [[package]]
 name = "photoz-heif"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "heic-rs",
 ]
 
 [[package]]
 name = "photoz-io"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "blake3",
  "craft-docpath",
@@ -4928,18 +4929,18 @@ dependencies = [
 
 [[package]]
 name = "photoz-ipp"
-version = "0.11.1"
+version = "0.12.0"
 
 [[package]]
 name = "photoz-ops"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "photoz-doc",
 ]
 
 [[package]]
 name = "photoz-paint"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "photoz-color",
  "photoz-geom",
@@ -4950,7 +4951,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-plugins"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "photoz-color",
  "photoz-geom",
@@ -4965,7 +4966,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-psd"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "flate2",
  "photoz-psd",
@@ -4976,7 +4977,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-raster"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "photoz-color",
  "photoz-geom",
@@ -4987,7 +4988,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-raw"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "flate2",
  "image",
@@ -5002,7 +5003,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-tablet"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "block2 0.6.2",
  "objc2 0.6.4",
@@ -5014,7 +5015,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-testkit"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "memory-stats",
  "photoz-color",
@@ -5025,7 +5026,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-text"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "flate2",
  "parley",
@@ -5040,7 +5041,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-ui-egui"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "base64 0.22.1",
  "craft-print",
@@ -5082,7 +5083,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-vector"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "photoz-color",
  "photoz-doc",
@@ -5093,7 +5094,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-web"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "eframe",
  "egui",
@@ -5115,7 +5116,7 @@ dependencies = [
 
 [[package]]
 name = "photoz-web-boot"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "flate2",
  "js-sys",
@@ -8711,7 +8712,7 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
 name = "xtask"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "serde",
  "serde_json",
