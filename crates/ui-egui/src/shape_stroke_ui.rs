@@ -74,7 +74,7 @@ impl StrokeOptions {
         };
     }
 
-    fn valid(&self) -> bool {
+    pub(crate) fn valid(&self) -> bool {
         self.stroke(3.0, photoz_doc::Fill::Solid(photoz_doc::Color::BLACK)).validate().is_ok()
     }
 }

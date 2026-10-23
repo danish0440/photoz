@@ -274,7 +274,7 @@ pub fn dispatch_pressed(app: &mut PhotozApp, ctx: &egui::Context, focus: Focus, 
 /// selection is filled with the background colour in the mask (Photoshop's Delete on a mask), and
 /// with no selection the mask itself is deleted, as Layer › Layer Mask › Delete, unless several
 /// layers are selected: then they are deleted.
-fn delete_key_command(app: &PhotozApp, id: String) -> String {
+pub(crate) fn delete_key_command(app: &PhotozApp, id: String) -> String {
     if id != "edit.clear" {
         return id;
     }

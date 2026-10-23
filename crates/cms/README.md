@@ -75,7 +75,7 @@ sampled gamut boundary. `profiles/photoz-coated-cmyk.icc` (237 KB, AToB 11⁴ lu
 21³ lut16) is that output, dedicated to the public domain (CC0-1.0). Regenerate with
 
 ```sh
-PHOTOZ_REGEN_PROFILES=1 cargo test -p photoz-cms --release --test regen
+PHOTOZ_REGEN_PROFILES=1 cargo test -p photoz-cms --release --test it -- regen::
 ```
 
 It is a plausible coated-offset profile, not a measured characterisation: use your printer's
