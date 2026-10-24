@@ -21,6 +21,7 @@ rayon = { workspace = true }
 proptest = { workspace = true }
 criterion = { workspace = true }
 photoz-paint = { workspace = true }
+photoz-cms = { workspace = true }
 
 [[bench]]
 name = "compose"
