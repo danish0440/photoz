@@ -2,7 +2,7 @@ rebrand photocraft -> PhotoZ
 about credit inserted in: ['crates/ui-egui/src/dialogs.rs']
 launcher patches: []
 lines still naming ArtCraft/getartcraft/discord (non-doc): 4
-crates/ui-egui/src/dialogs.rs:556: // PINTAZ-ABOUT: required credit (Apache-2.0 change notice; ArtCraft brand licence)
-crates/ui-egui/src/dialogs.rs:558: ui.weak("Based on PhotoCraft by Storytold (ArtCraft), Apache-2.0. Changes by PINTAZ TECHNOLOGIES.");
+crates/ui-egui/src/dialogs.rs:696: // PINTAZ-ABOUT: required credit (Apache-2.0 change notice; ArtCraft brand licence)
+crates/ui-egui/src/dialogs.rs:698: ui.weak("Based on PhotoCraft by Storytold (ArtCraft), Apache-2.0. Changes by PINTAZ TECHNOLOGIES.");
 crates/ui-egui/src/links.rs:2: //! bar all open these. URLs follow the crafting-app pattern (`getartcraft.com/apps/<app>`,
 crates/ui-egui/src/links.rs:44: /// "PhotoZ website · GitHub · ArtCraft" as links, centred. Clicks route through [`open`] (the
