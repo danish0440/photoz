@@ -16,6 +16,9 @@
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <?ifndef HasCraftFontLicences ?>
+  <?define HasCraftFontLicences=0 ?>
+  <?endif ?>
   <Package
       Name="PhotoZ"
       Manufacturer="Learning Machines LLC"
@@ -50,6 +53,9 @@
     </Property>
 
     <Feature Id="Main" Title="PhotoZ" Level="1">
+      <?if $(var.HasCraftFontLicences) = 1 ?>
+      <ComponentGroupRef Id="CraftFontLicences" />
+      <?endif ?>
       <ComponentGroupRef Id="PhotozFiles" />
     </Feature>
 
@@ -80,6 +86,11 @@
   </Package>
 
   <Fragment>
+    <?if $(var.HasCraftFontLicences) = 1 ?>
+    <ComponentGroup Id="CraftFontLicences" Directory="INSTALLFOLDER">
+      <Files Include="$(var.DocsDir)\**" />
+    </ComponentGroup>
+    <?endif ?>
     <ComponentGroup Id="PhotozFiles" Directory="INSTALLFOLDER">
       <Component Id="PhotozApp" Guid="DF9225E5-5D3D-505C-B6C2-6997C71326DF">
         <File Id="PhotozExe" Source="$(var.BinDir)\photoz.exe" KeyPath="yes">

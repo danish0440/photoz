@@ -22,7 +22,7 @@ fn decode() -> egui::ColorImage {
 
 /// The icon texture, uploaded on first use and kept in the context.
 fn texture(ctx: &Context) -> TextureHandle {
-    let id = Id::new("photoz-brand-mark");
+    let id = Id::unique("photoz-brand-mark");
     if let Some(tex) = ctx.data(|d| d.get_temp::<TextureHandle>(id)) {
         return tex;
     }
@@ -34,7 +34,7 @@ fn texture(ctx: &Context) -> TextureHandle {
 
 /// Where the mark was painted this frame (tests and screenshots).
 fn rect_id() -> Id {
-    Id::new("photoz-brand-mark-rect")
+    Id::unique("photoz-brand-mark-rect")
 }
 
 /// Paint the mark into `r` (square).
