@@ -49,6 +49,8 @@ modules:
     build-commands:
       - cargo --offline build --release --locked -p photoz --features heif
       - install -Dm755 target/release/photoz /app/bin/photoz
+      - install -Dm644 NOTICE /app/share/doc/photoz/NOTICE
+      - install -Dm644 ATTRIBUTION.md /app/share/doc/photoz/ATTRIBUTION.md
       - install -Dm644 packaging/linux/com.pintaz.photoz.desktop /app/share/applications/com.pintaz.photoz.desktop
       - install -Dm644 packaging/linux/com.pintaz.photoz.mime.xml /app/share/mime/packages/com.pintaz.photoz.xml
       - mkdir -p /app/share/icons && cp -R assets/app-icon/hicolor /app/share/icons/
