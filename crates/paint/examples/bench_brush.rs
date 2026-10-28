@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use photoz_color::{PixelFormat, SampleType};
 use photoz_geom::Rect;
-use photoz_paint::*;
+use photoz_paint::{BrushSettings, Dynamic, Scattering, ShapeDynamics, StrokePoint, StrokeRenderer, Texture, presets};
 use photoz_raster::Surface;
 
 fn run(fmt: PixelFormat, label: &str, brush: &BrushSettings) {

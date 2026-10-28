@@ -33,9 +33,23 @@ pub fn open(path: &Path) -> Result<Opened, AutomationError> {
         let document = photoz_format::load_path(path)?;
         return Ok(Opened { warnings: photoz_io::open_warnings(&document), document, source_read_only: false });
     }
-    let bytes = photoz_format::read_file(path).map_err(|e| AutomationError::Io(format!("{}: {e}", path.display())))?;
     let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    open_bytes(&name, &bytes)
+    // A PSD/PSB is parsed from the open file (channel data read as it is decoded), so a CLI
+    // convert or info of a 2 GB file does not hold the file in memory next to the document.
+    #[cfg(any(unix, windows))]
+    {
+        let r =
+            photoz_io::import_file(&name, path, &photoz_io::ImportOptions::default(), &photoz_raster::Interrupt::NONE).map_err(|e| match e {
+                photoz_io::IoError::Read(msg) => AutomationError::Io(msg),
+                e => e.into(),
+            })?;
+        Ok(Opened { document: r.document, warnings: r.warnings, source_read_only: r.source_read_only })
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let bytes = photoz_format::read_file(path).map_err(|e| AutomationError::Io(format!("{}: {e}", path.display())))?;
+        open_bytes(&name, &bytes)
+    }
 }
 
 /// Previews for a `.pcraft` bundle.
