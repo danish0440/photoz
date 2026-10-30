@@ -5,4 +5,5 @@ nix.yml
 packaging-lint.yml
 perf-nightly.yml
 release.yml
+sonarcloud.yml
 windows-arm64.yml
