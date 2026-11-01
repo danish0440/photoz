@@ -13,7 +13,7 @@
 //! `--raw` store tips uncompressed (bigger files). Each file stays under the reader's decoded cap (1 GiB; 512 MiB on 32-bit).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use photoz_paint::procedural::*;
+use photoz_paint::procedural::{bristle_tip, chalk_tip, charcoal_tip, grass_tip, leaf_tip, rake_tip, spatter_tip, sponge_tip, star_tip};
 use photoz_paint::tile::GrayTile;
 use photoz_psd::abr::{AbrSample, MAX_TOTAL_BYTES, write_v6};
 use photoz_psd::descriptor::{Descriptor, UnicodeString, Value};
