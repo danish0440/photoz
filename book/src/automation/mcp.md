@@ -20,6 +20,16 @@ Bridge to a running desktop application with the same private token file used by
 photoz-cli mcp --bridge 127.0.0.1:7878 --control-token-file /private/path/control.token
 ```
 
+Use absolute root paths in MCP client configurations, since a relative root is resolved from the
+client's launch directory. In bridge mode the roots are configured on the desktop app, and root
+flags on `photoz-cli mcp --bridge` are rejected. Explicit `--control-token` and
+`--control-token-file` flags require `--bridge` (or `PHOTOZ_CONTROL_PORT`) and are mutually
+exclusive; bridge credentials can also come from `PHOTOZ_CONTROL_TOKEN` or
+`PHOTOZ_CONTROL_TOKEN_FILE`. Each launch option
+except `--help`/`-h` takes one non-empty value and cannot be repeated. Stray positional arguments,
+missing values and options for the wrong mode are usage errors (exit 2) reported on stderr before
+the server starts.
+
 Tools cover session/document operations, command discovery and execution, batching, and—when bridged—UI inspection and control. Tool schemas improve correctness but are not authorization boundaries.
 
 ## From an installed release
@@ -28,13 +38,13 @@ The release packages ship `photoz-cli` alongside the desktop app, so no build is
 
 | Install | CLI |
 |---|---|
-| Windows (MSI) | `C:\Program Files\PhotoZ\photoz-cli.exe` by default (wherever you installed it otherwise), not on `PATH` |
+| Windows (MSI) | `%LOCALAPPDATA%\Programs\ArtCraft\PhotoZ\photoz-cli.exe` by default (`C:\Program Files\ArtCraft\PhotoZ\photoz-cli.exe` for an all-users install, under `Program Files (x86)` instead for the 32-bit build, or wherever you installed it otherwise), not on `PATH` |
 | Linux (deb, rpm) | `/usr/bin/photoz-cli` |
 | macOS | the separate `photoz-cli-<version>-macos-<arch>.zip` release asset (the `.app` holds only the desktop app) |
 
 ```sh
-# Windows, default install folder
-claude mcp add photoz -- "C:\Program Files\PhotoZ\photoz-cli.exe" mcp --automation-read-root <dir> --automation-write-root <dir>
+# Windows (PowerShell), default install folder
+claude mcp add photoz -- "$env:LOCALAPPDATA\Programs\ArtCraft\PhotoZ\photoz-cli.exe" mcp --automation-read-root <dir> --automation-write-root <dir>
 # Linux, or macOS with the CLI unzipped onto PATH
 claude mcp add photoz -- photoz-cli mcp --automation-read-root <dir> --automation-write-root <dir>
 ```

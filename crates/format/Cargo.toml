@@ -15,6 +15,7 @@ photoz-color = { workspace = true }
 photoz-raster = { workspace = true }
 photoz-doc = { workspace = true }
 photoz-codecs = { workspace = true }
+craft-pcraft-format = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["unbounded_depth", "float_roundtrip"] }
 thiserror = { workspace = true }

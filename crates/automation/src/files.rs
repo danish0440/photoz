@@ -18,29 +18,69 @@ pub struct Opened {
 
 /// Decode a document that was read through a filesystem capability.
 pub fn open_bytes(name: &str, bytes: &[u8]) -> Result<Opened, AutomationError> {
+    open_bytes_with_options(name, bytes, &photoz_io::ImportOptions::default())
+}
+
+/// Decode a document that was read through a filesystem capability with custom import options.
+pub fn open_bytes_with_options(name: &str, bytes: &[u8], opts: &photoz_io::ImportOptions) -> Result<Opened, AutomationError> {
     if Path::new(name).extension().is_some_and(|extension| extension.eq_ignore_ascii_case(photoz_format::EXTENSION)) {
         let document = photoz_format::load_from_bytes(bytes)?;
         return Ok(Opened { warnings: photoz_io::open_warnings(&document), document, source_read_only: false });
     }
-    let r = photoz_io::import(name, bytes)?;
+    let r = photoz_io::import_with_options(name, bytes, opts)?;
     Ok(Opened { document: r.document, warnings: r.warnings, source_read_only: r.source_read_only })
 }
 
 /// Open a document from disk. Directory bundles and `.pcraft` ZIPs load
 /// natively; everything else goes through `photoz-io` (PSD, PNG, …).
 pub fn open(path: &Path) -> Result<Opened, AutomationError> {
+    open_with_options(path, &photoz_io::ImportOptions::default())
+}
+
+/// Open a document from disk with custom import options.
+pub fn open_with_options(path: &Path, opts: &photoz_io::ImportOptions) -> Result<Opened, AutomationError> {
     if path.is_dir() {
         let document = photoz_format::load_path(path)?;
         return Ok(Opened { warnings: photoz_io::open_warnings(&document), document, source_read_only: false });
     }
-    let bytes = photoz_format::read_file(path).map_err(|e| AutomationError::Io(format!("{}: {e}", path.display())))?;
     let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    open_bytes(&name, &bytes)
+    // A PSD/PSB is parsed from the open file (channel data read as it is decoded), so a CLI
+    // convert or info of a 2 GB file does not hold the file in memory next to the document.
+    #[cfg(any(unix, windows))]
+    {
+        let r = photoz_io::import_file(&name, path, opts, &photoz_raster::Interrupt::NONE).map_err(|e| match e {
+            photoz_io::IoError::Read(msg) => AutomationError::Io(msg),
+            e => e.into(),
+        })?;
+        Ok(Opened { document: r.document, warnings: r.warnings, source_read_only: r.source_read_only })
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let bytes = photoz_format::read_file(path).map_err(|e| AutomationError::Io(format!("{}: {e}", path.display())))?;
+        open_bytes_with_options(&name, &bytes, opts)
+    }
 }
 
 /// Previews for a `.pcraft` bundle.
 pub fn previews(doc: &Document) -> SaveOptions {
-    SaveOptions { thumbnail: Some(photoz_compose::thumbnail(doc, 256)), composite: Some(photoz_compose::thumbnail(doc, 1024)) }
+    SaveOptions { thumbnail: Some(photoz_compose::thumbnail(doc, 256)), composite: Some(photoz_compose::thumbnail(doc, 1024)), ..Default::default() }
+}
+
+/// [`previews`], plus the full-size composite when `opts` asks for it and it can be rendered
+/// ([`ExportOptions::pcraft_full_composite`]). Fails when a scratch tile of `doc` could not be
+/// read while they were rendered: the previews may then hold placeholder pixels, and the
+/// bundle's own scratch checks only cover reads made after it starts.
+fn native_options(doc: &Document, opts: &ExportOptions) -> Result<SaveOptions, AutomationError> {
+    doc.scratch_health().map_err(AutomationError::Io)?;
+    let generation = photoz_raster::spill::read_error_generation();
+    let mut out = previews(doc);
+    if opts.pcraft_full_composite {
+        out.full_composite = photoz_io::pcraft_full_composite(doc);
+        out.full_composite_icc = out.full_composite.as_ref().map(|_| photoz_io::pcraft_full_composite_icc(doc));
+    }
+    photoz_raster::spill::check_since(generation).map_err(AutomationError::Io)?;
+    doc.scratch_health().map_err(AutomationError::Io)?;
+    Ok(out)
 }
 
 /// Encode the name the saved native bundle will report on reopening. Save As updates
@@ -72,7 +112,7 @@ pub fn save(
         let named = named_for_output(doc, &path.to_string_lossy());
         let mut local = PcraftWriter::new();
         let w = writer.unwrap_or(&mut local);
-        w.save_path(&named, path, &previews(&named))?;
+        w.save_path(&named, path, &native_options(&named, opts)?)?;
         return Ok(Vec::new());
     }
     let r = photoz_io::export(doc, &ext, opts)?;
@@ -90,7 +130,7 @@ pub fn save_bytes(doc: &Document, name: &str, format_override: Option<&str>, opt
         .ok_or_else(|| AutomationError::BadRequest(format!("cannot tell the format of `{name}`; pass a format")))?;
     if ext == photoz_format::EXTENSION {
         let named = named_for_output(doc, name);
-        return Ok((photoz_format::save_to_bytes(&named, &previews(&named))?, Vec::new()));
+        return Ok((photoz_format::save_to_bytes(&named, &native_options(&named, opts)?)?, Vec::new()));
     }
     let result = photoz_io::export(doc, &ext, opts)?;
     Ok((result.bytes, result.warnings))
