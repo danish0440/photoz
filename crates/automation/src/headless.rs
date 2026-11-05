@@ -15,7 +15,7 @@ use crate::{AuthorizedWorkspace, AutomationError, files};
 fn untrusted(filesystem: Filesystem) -> Headless {
     let mut session = Session::new();
     session.authorize = Some(authorize_engine_step);
-    Headless { session, writers: HashMap::new(), filesystem }
+    Headless { session, writers: HashMap::new(), filesystem, renderer: None, pending_diagnostics: Vec::new() }
 }
 
 enum Filesystem {
@@ -30,6 +30,11 @@ pub struct Headless {
     /// Incremental `.pcraft` writers per document id.
     writers: HashMap<u64, PcraftWriter>,
     filesystem: Filesystem,
+    renderer: Option<Box<dyn photoz_io::BandRenderer>>,
+    /// Export warnings kept when a write fails, and preview fallback warnings: the next
+    /// [`Headless::drain_diagnostics`] still reports them, whatever the renderer does with
+    /// [`photoz_io::BandRenderer::push_diagnostic`].
+    pending_diagnostics: Vec<String>,
 }
 
 impl Default for Headless {
@@ -48,13 +53,57 @@ impl Headless {
     /// not a remote automation client, supplies these host paths. Nested
     /// `actions.play` steps are not re-checked: this caller is already trusted.
     pub fn trusted_local() -> Self {
-        Self { session: Session::new(), writers: HashMap::new(), filesystem: Filesystem::TrustedLocal }
+        Self { session: Session::new(), writers: HashMap::new(), filesystem: Filesystem::TrustedLocal, renderer: None, pending_diagnostics: Vec::new() }
     }
 
     /// Create an automation session with capability-scoped file access.
     /// Each step of `actions.play` is checked with [`authorize_engine_step`].
     pub fn with_workspace(workspace: AuthorizedWorkspace) -> Self {
         untrusted(Filesystem::Workspace(workspace))
+    }
+
+    /// Configure a custom [`photoz_io::BandRenderer`] for flat exports and previews.
+    pub fn with_renderer(mut self, renderer: Box<dyn photoz_io::BandRenderer>) -> Self {
+        self.renderer = Some(renderer);
+        self
+    }
+
+    /// Set or clear the active [`photoz_io::BandRenderer`].
+    pub fn set_renderer(&mut self, renderer: Option<Box<dyn photoz_io::BandRenderer>>) {
+        self.renderer = renderer;
+    }
+
+    /// Take the active renderer out of this session.
+    pub fn take_renderer(&mut self) -> Option<Box<dyn photoz_io::BandRenderer>> {
+        self.renderer.take()
+    }
+
+    /// Mutable reference to the active renderer if any.
+    pub fn renderer_mut(&mut self) -> Option<&mut dyn photoz_io::BandRenderer> {
+        self.renderer.as_mut().map(|b| &mut **b as &mut dyn photoz_io::BandRenderer)
+    }
+
+    /// Drain diagnostics from the active renderer if any, and the export warnings a failed
+    /// capability-scoped write kept. Each is returned once.
+    pub fn drain_diagnostics(&mut self) -> Vec<String> {
+        let mut drained = std::mem::take(&mut self.pending_diagnostics);
+        if let Some(renderer) = self.renderer.as_mut() {
+            drained.extend(renderer.drain_diagnostics());
+        }
+        drained
+    }
+
+    #[cfg(all(feature = "gpu", not(target_arch = "wasm32")))]
+    /// Enable the native GPU renderer backend with lazy device initialization.
+    pub fn enable_gpu(&mut self) {
+        self.renderer = Some(Box::new(crate::gpu::GpuRenderer::lazy()));
+    }
+
+    #[cfg(all(feature = "gpu", not(target_arch = "wasm32")))]
+    /// Builder method to enable the native GPU renderer backend.
+    pub fn with_gpu(mut self) -> Self {
+        self.enable_gpu();
+        self
     }
 
     /// Apply background jobs that finished since the last request, so every request (save,
@@ -72,18 +121,47 @@ impl Headless {
         }
     }
 
+    /// Run `body` with document `index` active (the active one when `None`), then make the
+    /// previously active document active again, on success and on error alike: an `index`
+    /// targets one call and must not retarget the next automation command (#7025).
+    fn on_doc<T>(&mut self, index: Option<usize>, body: impl FnOnce(&mut Self) -> Result<T, AutomationError>) -> Result<T, AutomationError> {
+        let i = self.doc_index(index)?;
+        let previously_active = self.session.active_index();
+        if previously_active != Some(i) && !self.session.set_active(i) {
+            return Err(AutomationError::BadRequest(format!("no document at index {i}")));
+        }
+        let result = body(self);
+        if let Some(active) = previously_active.filter(|&active| self.session.active_index() != Some(active)) {
+            self.session.set_active(active);
+        }
+        result
+    }
+
     /// Open a file and make it the active document.
     pub fn open(&mut self, path: &Path) -> Result<Value, AutomationError> {
+        self.open_with_approval(path, false)
+    }
+
+    /// Open a file with optional high-memory approval and make it the active document.
+    pub fn open_with_approval(&mut self, path: &Path, approve_high_memory: bool) -> Result<Value, AutomationError> {
+        let opts = photoz_io::ImportOptions { psd_high_memory_approved: approve_high_memory, ..Default::default() };
+        self.open_with_options(path, &opts)
+    }
+
+    /// Open a file with custom import options and make it the active document.
+    pub fn open_with_options(&mut self, path: &Path, opts: &photoz_io::ImportOptions) -> Result<Value, AutomationError> {
         let requested = path.to_str().ok_or_else(|| AutomationError::BadRequest("automation paths must be valid UTF-8".into()))?;
         let mut o = match &self.filesystem {
             Filesystem::Denied => return Err(AutomationError::BadRequest("automation filesystem access is not granted: read authority is absent".into())),
-            Filesystem::TrustedLocal => files::open(path)?,
+            Filesystem::TrustedLocal => files::open_with_options(path, opts)?,
             Filesystem::Workspace(workspace) => {
                 let bytes = workspace.read(requested)?;
                 let name = path.file_name().and_then(|name| name.to_str()).unwrap_or(requested);
-                files::open_bytes(name, &bytes)?
+                files::open_bytes_with_options(name, &bytes, opts)?
             }
         };
+        // Preferences › Raw Defaults › Resolution, as the app's File › Open applies it.
+        file_cmds::raw_defaults(&self.session, &o.warnings, &mut o.document);
         let path = match file_cmds::template_name(&self.session, requested) {
             Some(untitled) => {
                 o.document.name = untitled;
@@ -111,29 +189,50 @@ impl Headless {
     /// Place a file into a document as a Smart Object layer: the capability-scoped counterpart
     /// of `file.placeEmbedded`, which reads an ambient path and is therefore refused in
     /// automation (#2810). `path` resolves beneath the read root the way `open` resolves one,
-    /// and `params` carries the command's own options (`scale`, `fit`, `center`).
+    /// and `params` carries the command's own options (`scale`, `fit`, `center`,
+    /// `approveHighMemory`).
     pub fn place(&mut self, index: Option<usize>, path: &str, params: &Value) -> Result<Value, AutomationError> {
-        let i = self.doc_index(index)?;
-        if self.session.active_index() != Some(i) && !self.session.set_active(i) {
-            return Err(AutomationError::BadRequest(format!("no document at index {i}")));
-        }
-        let mut opts = params.as_object().cloned().unwrap_or_default();
-        opts.insert("path".into(), json!(path));
-        // Where ambient paths are allowed the command reads the file itself, as everywhere else.
-        if matches!(&self.filesystem, Filesystem::TrustedLocal) {
-            return self.command_run("file.placeEmbedded", Value::Object(opts));
-        }
-        let bytes = match &self.filesystem {
-            Filesystem::Workspace(workspace) => workspace.read(path)?,
-            _ => {
-                return Err(AutomationError::BadRequest("automation filesystem access is not granted: read authority is absent".into()));
+        self.on_doc(index, |this| {
+            let mut opts = params.as_object().cloned().unwrap_or_default();
+            opts.insert("path".into(), json!(path));
+            // Where ambient paths are allowed the command reads the file itself, as everywhere else.
+            if matches!(&this.filesystem, Filesystem::TrustedLocal) {
+                return this.command_run("file.placeEmbedded", Value::Object(opts));
             }
-        };
-        let name = Path::new(path).file_name().and_then(|name| name.to_str()).unwrap_or(path);
-        self.sync_jobs();
-        // The bytes are already in memory and the path resolved beneath the root capability, so
-        // placing them needs no filesystem check of its own (`place_bytes` is the command body).
-        Ok(file_cmds::place_bytes(&mut self.session, name, bytes, None, &Value::Object(opts))?)
+            let bytes = match &this.filesystem {
+                Filesystem::Workspace(workspace) => workspace.read(path)?,
+                _ => {
+                    return Err(AutomationError::BadRequest("automation filesystem access is not granted: read authority is absent".into()));
+                }
+            };
+            let name = Path::new(path).file_name().and_then(|name| name.to_str()).unwrap_or(path);
+            this.sync_jobs();
+            // The bytes are already in memory and the path resolved beneath the root capability, so
+            // placing them needs no filesystem check of its own (`place_bytes` is the command body).
+            Ok(file_cmds::place_bytes(&mut this.session, name, bytes, None, &Value::Object(opts))?)
+        })
+    }
+
+    /// Replace a smart object's contents with a file from the read root: the capability-scoped
+    /// `layer.smartObjects.replaceContents`, which takes an ambient `path` and is refused in
+    /// automation (#8061). `params` is the command's own (`layer`).
+    pub fn replace_smart_object(&mut self, index: Option<usize>, path: &str, params: &Value) -> Result<Value, AutomationError> {
+        self.on_doc(index, |this| {
+            let mut opts = params.as_object().cloned().unwrap_or_default();
+            opts.insert("path".into(), json!(path));
+            if matches!(&this.filesystem, Filesystem::TrustedLocal) {
+                return this.command_run("layer.smartObjects.replaceContents", Value::Object(opts));
+            }
+            let bytes = match &this.filesystem {
+                Filesystem::Workspace(workspace) => workspace.read(path)?,
+                _ => {
+                    return Err(AutomationError::BadRequest("automation filesystem access is not granted: read authority is absent".into()));
+                }
+            };
+            let name = Path::new(path).file_name().and_then(|name| name.to_str()).unwrap_or(path);
+            this.sync_jobs();
+            Ok(photoz_engine::smart_cmds::replace_contents_from_bytes(&mut this.session, &Value::Object(opts), name, bytes)?)
+        })
     }
 
     /// Export each exported layer of a document as its own file beneath the write root: the
@@ -143,25 +242,29 @@ impl Headless {
     /// already exists, where the ambient command would, and it creates the directory before the
     /// export runs, so a refused export can leave an empty directory behind — never a file.
     pub fn export_layers(&mut self, index: Option<usize>, dir: &str, params: &Value) -> Result<Value, AutomationError> {
-        let i = self.doc_index(index)?;
-        if self.session.active_index() != Some(i) && !self.session.set_active(i) {
-            return Err(AutomationError::BadRequest(format!("no document at index {i}")));
-        }
-        if matches!(&self.filesystem, Filesystem::TrustedLocal) {
-            let mut opts = params.as_object().cloned().unwrap_or_default();
-            opts.insert("dir".into(), json!(dir));
-            return self.command_run("file.export.layersToFiles", Value::Object(opts));
-        }
-        self.sync_jobs();
-        let workspace = match &self.filesystem {
-            Filesystem::Workspace(workspace) => workspace,
-            _ => return Err(AutomationError::BadRequest("automation filesystem access is not granted: write authority is absent".into())),
-        };
-        let mut outputs = workspace.export_sequence(dir)?;
-        let written = file_cmds::export_layers_with(&self.session, params, |name, bytes| {
-            outputs.write(name, bytes).map_err(|e| photoz_engine::EngineError::Other(e.to_string()))
-        });
-        exported(dir, written, &mut outputs)
+        self.on_doc(index, |this| {
+            if matches!(&this.filesystem, Filesystem::TrustedLocal) {
+                let mut opts = params.as_object().cloned().unwrap_or_default();
+                opts.insert("dir".into(), json!(dir));
+                return this.command_run("file.export.layersToFiles", Value::Object(opts));
+            }
+            this.sync_jobs();
+            let workspace = match &this.filesystem {
+                Filesystem::Workspace(workspace) => workspace,
+                _ => return Err(AutomationError::BadRequest("automation filesystem access is not granted: write authority is absent".into())),
+            };
+            let mut outputs = workspace.export_sequence(dir)?;
+            let report = file_cmds::export_layers_report_with(&this.session, params, |name, bytes| {
+                outputs.write(name, bytes).map_err(|e| photoz_engine::EngineError::Other(e.to_string()))
+            });
+            let (written, skipped) = match report {
+                Ok(report) => (Ok(report.files), report.skipped),
+                Err(error) => (Err(error), Vec::new()),
+            };
+            let mut result = exported(dir, written, &mut outputs)?;
+            result["skipped"] = json!(skipped);
+            Ok(result)
+        })
     }
 
     /// Export each data set of a document as its own flattened file beneath the write root: the
@@ -169,25 +272,23 @@ impl Headless {
     /// batch is planned first and colliding names are refused before any file is written; the
     /// directory itself is created before that, so a refused batch can leave it empty behind.
     pub fn export_data_sets(&mut self, index: Option<usize>, dir: &str, params: &Value) -> Result<Value, AutomationError> {
-        let i = self.doc_index(index)?;
-        if self.session.active_index() != Some(i) && !self.session.set_active(i) {
-            return Err(AutomationError::BadRequest(format!("no document at index {i}")));
-        }
-        if matches!(&self.filesystem, Filesystem::TrustedLocal) {
-            let mut opts = params.as_object().cloned().unwrap_or_default();
-            opts.insert("dir".into(), json!(dir));
-            return self.command_run("file.export.dataSetsAsFiles", Value::Object(opts));
-        }
-        self.sync_jobs();
-        let workspace = match &self.filesystem {
-            Filesystem::Workspace(workspace) => workspace,
-            _ => return Err(AutomationError::BadRequest("automation filesystem access is not granted: write authority is absent".into())),
-        };
-        let mut outputs = workspace.export_sequence(dir)?;
-        let written = photoz_engine::export_data_sets_with(&self.session, params, |name, bytes| {
-            outputs.write(name, bytes).map_err(|e| photoz_engine::EngineError::Other(e.to_string()))
-        });
-        exported(dir, written, &mut outputs)
+        self.on_doc(index, |this| {
+            if matches!(&this.filesystem, Filesystem::TrustedLocal) {
+                let mut opts = params.as_object().cloned().unwrap_or_default();
+                opts.insert("dir".into(), json!(dir));
+                return this.command_run("file.export.dataSetsAsFiles", Value::Object(opts));
+            }
+            this.sync_jobs();
+            let workspace = match &this.filesystem {
+                Filesystem::Workspace(workspace) => workspace,
+                _ => return Err(AutomationError::BadRequest("automation filesystem access is not granted: write authority is absent".into())),
+            };
+            let mut outputs = workspace.export_sequence(dir)?;
+            let written = photoz_engine::export_data_sets_with(&this.session, params, |name, bytes| {
+                outputs.write(name, bytes).map_err(|e| photoz_engine::EngineError::Other(e.to_string()))
+            });
+            exported(dir, written, &mut outputs)
+        })
     }
 
     /// Import a data set CSV from the read root: the capability-scoped
@@ -195,24 +296,22 @@ impl Headless {
     /// in automation (#3216). The file is read beneath the root the way `open` reads one and
     /// handed to the command's own parser over the text it already has.
     pub fn import_data_sets(&mut self, index: Option<usize>, path: &str, params: &Value) -> Result<Value, AutomationError> {
-        let i = self.doc_index(index)?;
-        if self.session.active_index() != Some(i) && !self.session.set_active(i) {
-            return Err(AutomationError::BadRequest(format!("no document at index {i}")));
-        }
-        if matches!(&self.filesystem, Filesystem::TrustedLocal) {
-            let mut opts = params.as_object().cloned().unwrap_or_default();
-            opts.insert("path".into(), json!(path));
-            return self.command_run("file.import.variableDataSets", Value::Object(opts));
-        }
-        let text = match &self.filesystem {
-            Filesystem::Workspace(workspace) => {
-                let bytes = workspace.read(path)?;
-                String::from_utf8(bytes).map_err(|e| AutomationError::BadRequest(format!("automation read `{path}` is not valid UTF-8: {e}")))?
+        self.on_doc(index, |this| {
+            if matches!(&this.filesystem, Filesystem::TrustedLocal) {
+                let mut opts = params.as_object().cloned().unwrap_or_default();
+                opts.insert("path".into(), json!(path));
+                return this.command_run("file.import.variableDataSets", Value::Object(opts));
             }
-            _ => return Err(AutomationError::BadRequest("automation filesystem access is not granted: read authority is absent".into())),
-        };
-        self.sync_jobs();
-        Ok(photoz_engine::import_data_sets_text(&mut self.session, &text, params)?)
+            let text = match &this.filesystem {
+                Filesystem::Workspace(workspace) => {
+                    let bytes = workspace.read(path)?;
+                    String::from_utf8(bytes).map_err(|e| AutomationError::BadRequest(format!("automation read `{path}` is not valid UTF-8: {e}")))?
+                }
+                _ => return Err(AutomationError::BadRequest("automation filesystem access is not granted: read authority is absent".into())),
+            };
+            this.sync_jobs();
+            Ok(photoz_engine::import_data_sets_text(&mut this.session, &text, params)?)
+        })
     }
 
     /// Save (`.pcraft` or any export format by extension). With no path,
@@ -248,11 +347,36 @@ impl Headless {
             Filesystem::Denied => return Err(AutomationError::BadRequest("automation filesystem access is not granted: write authority is absent".into())),
             Filesystem::TrustedLocal => {
                 let writer = self.writers.entry(doc.id.0).or_default();
-                files::save(&doc, &target, format, opts, Some(writer))?
+                // Export warnings of a failed write stay in `pending_diagnostics`, whatever the
+                // renderer does with `push_diagnostic`.
+                files::save_with_renderer_keeping(
+                    &doc,
+                    &target,
+                    format,
+                    opts,
+                    Some(writer),
+                    self.renderer.as_mut().map(|b| &mut **b as &mut dyn photoz_io::BandRenderer),
+                    &mut self.pending_diagnostics,
+                )?
             }
             Filesystem::Workspace(workspace) => {
-                let (bytes, warnings) = files::save_bytes(&doc, target_text, format, opts)?;
-                workspace.write(target_text, &bytes)?;
+                // Only the target is granted: a linked smart object's stored path is document
+                // data, so PSD export writes that layer as pixels instead of embedding the file.
+                let opts = ExportOptions { read_linked_files: false, ..opts.clone() };
+                let (bytes, warnings) = files::save_bytes_with_renderer(
+                    &doc,
+                    target_text,
+                    format,
+                    &opts,
+                    self.renderer.as_mut().map(|b| &mut **b as &mut dyn photoz_io::BandRenderer),
+                )?;
+                if let Err(error) = workspace.write(target_text, &bytes) {
+                    // Keep the export diagnostics for the caller, as the local save path does:
+                    // they are reported with the write error and by the next drain, even when the
+                    // renderer's `push_diagnostic` is the default no-op.
+                    self.pending_diagnostics.extend(warnings);
+                    return Err(error);
+                }
                 warnings
             }
         };
@@ -266,14 +390,12 @@ impl Headless {
             format.map(|f| f.trim_start_matches('.').to_ascii_lowercase()).or_else(|| target.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()));
         if ext.as_deref().is_some_and(|e| file_cmds::holds(&doc, e)) {
             // Saving by index must not retarget the next automation command.
-            let previously_active = self.session.active_index();
-            self.session.set_active(i);
-            if let Some(st) = self.session.active_mut() {
-                st.saved_to(target.to_string_lossy().into_owned());
-            }
-            if let Some(active) = previously_active {
-                self.session.set_active(active);
-            }
+            self.on_doc(Some(i), |this| {
+                if let Some(st) = this.session.active_mut() {
+                    st.saved_to(target.to_string_lossy().into_owned());
+                }
+                Ok(())
+            })?;
         }
         Ok(json!({ "path": target.to_string_lossy(), "warnings": warnings }))
     }
@@ -293,13 +415,16 @@ impl Headless {
         Ok(photoz_engine::inspect::document(&self.session.documents()[i]))
     }
 
-    pub fn render_png(&self, index: Option<usize>, max_side: u32) -> Result<Vec<u8>, AutomationError> {
+    pub fn render_png(&mut self, index: Option<usize>, max_side: u32) -> Result<Vec<u8>, AutomationError> {
         let i = self.doc_index(index)?;
         let doc = &self.session.documents()[i].doc;
         if !matches!(&self.filesystem, Filesystem::TrustedLocal) {
             crate::budgets::check_preview(doc.size.width, doc.size.height, max_side)?;
         }
-        let png = files::render_png(doc, max_side)?;
+        let (png, warnings) = files::render_png_with_warnings(doc, max_side, self.renderer.as_mut().map(|b| &mut **b as &mut dyn photoz_io::BandRenderer))?;
+        // Kept here so `drain_diagnostics` returns them whatever the renderer does with
+        // `push_diagnostic`.
+        self.pending_diagnostics.extend(warnings);
         if !matches!(&self.filesystem, Filesystem::TrustedLocal) {
             crate::budgets::check_png(png.len())?;
         }
@@ -317,8 +442,16 @@ impl Headless {
     pub fn close(&mut self, index: Option<usize>) -> Result<Value, AutomationError> {
         let i = self.doc_index(index)?;
         if let Some(d) = self.session.close(i) {
-            self.writers.remove(&d.doc.id.0);
+            let id = d.doc.id;
+            self.writers.remove(&id.0);
+            // Release this document's GPU caches now instead of keeping them until another
+            // document renders or the server exits.
+            if let Some(r) = self.renderer.as_mut() {
+                r.forget_document(id);
+            }
         }
+        // The closed document's buffers went to the scratch pool: hand them back to the OS.
+        photoz_raster::scratch::release();
         Ok(self.session_list())
     }
 
@@ -343,13 +476,38 @@ impl Headless {
         }
         // Background jobs that finished since the last request (or batch step) are applied first.
         self.sync_jobs();
-        if wait {
-            return Ok(self.session.execute(id, params)?);
+        // Commands such as `file.close`, `file.closeAll` and `file.closeOthers` remove
+        // documents directly through the session, so release their GPU caches here too.
+        let before = self.document_ids();
+        let result = if wait {
+            self.session.execute(id, params).map_err(AutomationError::from)
+        } else {
+            self.session
+                .start(id, params)
+                .map(|started| match started {
+                    photoz_engine::jobs::Started::Done(v) => v,
+                    photoz_engine::jobs::Started::Job(job) => json!({"job": job.0, "pending": true}),
+                })
+                .map_err(AutomationError::from)
+        };
+        self.forget_removed_documents(&before);
+        result
+    }
+
+    fn document_ids(&self) -> Vec<photoz_doc::DocId> {
+        self.session.documents().iter().map(|st| st.doc.id).collect()
+    }
+
+    /// Release the writer and GPU caches of every document a command removed.
+    fn forget_removed_documents(&mut self, before: &[photoz_doc::DocId]) {
+        let after: std::collections::HashSet<_> = self.document_ids().into_iter().collect();
+        let removed: Vec<_> = before.iter().copied().filter(|id| !after.contains(id)).collect();
+        for id in removed {
+            self.writers.remove(&id.0);
+            if let Some(r) = self.renderer.as_mut() {
+                r.forget_document(id);
+            }
         }
-        Ok(match self.session.start(id, params)? {
-            photoz_engine::jobs::Started::Done(v) => v,
-            photoz_engine::jobs::Started::Job(job) => json!({"job": job.0, "pending": true}),
-        })
     }
 }
 
