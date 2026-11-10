@@ -1,5 +1,6 @@
 use super::*;
-use photoz_color::Color;
+use photoz_color::{Color, ColorMode, SampleType};
+use photoz_doc::Size;
 use photoz_format::{Autosaver, RecoveryEntry, SaveOptions, list_recovery};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
