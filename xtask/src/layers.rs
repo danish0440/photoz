@@ -40,7 +40,6 @@ pub const TABLE: &[(&str, Class)] = &[
     ("psd", Class::Standalone),
     ("codecs", Class::Standalone),
     // Optional HEIF/HEIC decoder (heic-rs), used only by `codecs` behind its `heif` feature.
-    ("heif", Class::Standalone),
     // IPP client for CUPS printing (pure Rust, no dependencies), used by `engine` on Unix.
     ("ipp", Class::Standalone),
     ("raw", Class::Standalone),
@@ -90,9 +89,9 @@ fn intra_layer_allowed(from: &str, to: &str) -> bool {
 }
 
 /// The only workspace dependencies a standalone crate may have: (from, to), both standalone and
-/// both publishable. `codecs` uses the optional `heif` decoder crate behind its `heif` feature, so
-/// distributors can leave HEVC decoding out of a build; `heif` itself depends on no workspace crate.
-pub const STANDALONE_EXCEPTIONS: &[(&str, &str)] = &[("codecs", "heif")];
+/// both publishable. None at present: the one there was, `codecs` → `heif`, ended when the HEIF
+/// decoder moved to craft-libs as `craft-heif` (craft-libs#784).
+pub const STANDALONE_EXCEPTIONS: &[(&str, &str)] = &[];
 
 fn standalone_exception(from: &str, to: &str) -> bool {
     let (from, to) = (short_name(from), short_name(to));
@@ -323,15 +322,13 @@ mod tests {
     }
 
     #[test]
-    fn standalone_exception_is_exactly_codecs_to_heif() {
-        assert!(check(&[c("photoz-codecs", &[("photoz-heif", Normal, true)])]).is_empty());
-        assert!(check(&[c("photoz-codecs", &[("photoz-heif", Dev, true)])]).is_empty());
-        // Not the other way round, not for other standalone crates, and heif stays dependency-free.
-        for (from, to) in [("photoz-heif", "photoz-codecs"), ("photoz-psd", "photoz-heif"), ("photoz-heif", "photoz-geom")] {
+    fn standalone_crates_have_no_exceptions() {
+        // Standalone crates may not use each other, in either direction.
+        for (from, to) in [("photoz-codecs", "photoz-psd"), ("photoz-psd", "photoz-codecs")] {
             let v = check(&[c(from, &[(to, Normal, true)])]);
             assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]), "{from} -> {to}");
         }
-        // The exception does not open codecs up to layered crates.
+        // Nor layered crates.
         let v = check(&[c("photoz-codecs", &[("photoz-geom", Normal, true)])]);
         assert!(matches!(v[..], [Violation::StandaloneHasWorkspaceDep { .. }]));
     }

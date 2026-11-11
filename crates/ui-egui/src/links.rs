@@ -9,6 +9,7 @@ use crate::PhotozApp;
 pub const DISCORD: &str = "https://github.com/danish0440/photoz/issues";
 pub const ARTCRAFT_WEBSITE: &str = "https://github.com/storytold/photocraft";
 pub const APP_PAGE: &str = "https://github.com/danish0440/photoz";
+pub const TUTORIALS: &str = "https://github.com/danish0440/photoz";
 pub const GITHUB: &str = "https://github.com/danish0440/photoz";
 pub const ISSUES: &str = "https://github.com/danish0440/photoz/issues";
 
@@ -102,7 +103,20 @@ mod tests {
     fn help_menu_lists_links_then_separator_then_system_info_and_about() {
         let app = PhotozApp::new(photoz_engine::Session::new(), Default::default());
         let help: Vec<String> = crate::menus::menu_items(&app).into_iter().filter(|i| i.path == ["Help"]).map(|i| i.id).collect();
-        assert_eq!(help, ["help.discord", "help.website", "help.artcraftWebsite", "help.github", "help.reportIssue", "---", "help.systemInfo", "help.about"]);
+        assert_eq!(
+            help,
+            [
+                "help.discord",
+                "help.website",
+                "help.artcraftWebsite",
+                "help.github",
+                "help.reportIssue",
+                "help.checkForUpdates",
+                "---",
+                "help.systemInfo",
+                "help.about"
+            ]
+        );
         for (id, _) in COMMANDS {
             assert!(crate::menus::is_live(id) && crate::menus::is_enabled(&app, id), "{id}");
         }
