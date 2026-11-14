@@ -2,10 +2,10 @@
 
 External bytes enter PhotoZ through four main paths:
 
-- `photoz-psd` parses and writes PSD and PSB structures.
+- `craft-psd` parses and writes PSD and PSB structures.
 - `photoz-codecs` decodes and encodes flat raster formats.
 - `photoz-format` loads and saves the native `.pcraft` bundle.
-- `photoz-affinity` reads native Affinity documents (`.af`, `.afdesign`, `.afphoto`, `.afpub`): layers, artboards, vectors, text, images and masks; it does not write them.
+- `craft-affinity` reads native Affinity documents (`.af`, `.afdesign`, `.afphoto`, `.afpub`): layers, artboards, vectors, text, images and masks; it does not write them.
 
 `photoz-io` maps PSD and flat images into the document model and exports documents back to those formats. It is the integration layer; parsing limits remain the responsibility of the underlying format crates.
 
