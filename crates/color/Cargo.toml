@@ -8,5 +8,5 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-photoz-cms = { workspace = true }
+craft-cms = { workspace = true }
 serde = { workspace = true }

@@ -14,7 +14,7 @@ corpus = []
 [dependencies]
 photoz-geom = { workspace = true }
 photoz-color = { workspace = true }
-photoz-cms = { workspace = true }
+craft-cms = { workspace = true }
 photoz-raster = { workspace = true }
 photoz-doc = { workspace = true }
 photoz-ops = { workspace = true }
@@ -23,25 +23,32 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 rayon = { workspace = true }
+chrono = { workspace = true }
+web-time = { workspace = true }
 photoz-paint = { workspace = true }
 photoz-algo = { workspace = true }
 photoz-text = { workspace = true }
 photoz-vector = { workspace = true }
 photoz-io = { workspace = true }
-photoz-psd = { workspace = true }
+craft-xml = { workspace = true }
+craft-psd = { workspace = true }
 photoz-format = { workspace = true }
 photoz-plugins = { workspace = true }
+base64 = "0.22"
 blake3 = { version = "1.8", default-features = false, features = ["pure"] }
 photoz-codecs = { workspace = true }
+photoz-formats = { workspace = true }
 flate2 = { workspace = true }
 craft-print = { workspace = true }
 
-# Photoshop `.kys` shortcut sets (`edit.keyboardShortcuts` `importKys`); already in the tree
-# through photoz-ui-egui and usvg.
-roxmltree = "0.20"
+# Release tags use the same semantic versions as Cargo.
+semver = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tempfile = "3"
+# `clock`: the local time that names History Options' snapshot on save (#2966); already in the
+# tree through rmcp. The web build has no local clock here and names it "Snapshot N".
+chrono = { workspace = true, features = ["clock"] }
 
 # `file_cmds::same_file` on Windows: the volume serial number and file index, so a hard link to a
 # file is that file (std's `MetadataExt::file_index` is unstable).
@@ -56,9 +63,11 @@ winsafe = { version = "=0.0.29", default-features = false, features = ["kernel"]
 photoz-ipp = { workspace = true }
 
 [dev-dependencies]
-photoz-affinity = { workspace = true, features = ["synth"] }
+craft-affinity = { workspace = true, features = ["synth"] }
+photoz-io = { workspace = true, features = ["testgen"] }
 # Synthetic camera raw files for the open tests.
 photoz-raw = { workspace = true, features = ["testgen"] }
+photoz-testkit = { workspace = true }
 # WebAssembly text -> binary for plug-in test modules (Apache-2.0 WITH LLVM-exception).
 wat = "1.228"
 # Synthetic multi-part EXR fixtures for the parts-commands tests.
