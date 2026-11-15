@@ -254,7 +254,7 @@ impl Backend for MacMenu {
 pub fn install(ctx: &egui::Context, app: &photoz_ui_egui::PhotozApp) -> Option<native_menu::NativeMenu> {
     let language = &app.session.prefs().interface.language;
     let lang = photoz_ui_egui::i18n::Lang::from_pref(language);
-    let bar = native_menu::photoz_layout(&photoz_ui_egui::menus::menu_items(app), lang, language).bar;
+    let bar = native_menu::app_layout(app, &photoz_ui_egui::menus::menu_items(app), lang, language).bar;
     // Never crash for a menu: if AppKit refuses, keep the in-window menus.
     let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let mut menu = MacMenu::new(ctx);

@@ -16,6 +16,15 @@
        this page, no Rust runs to say so, so the page itself shows what to do after a while. */
     #photoz_stalled { color: #8c8c8c; visibility: hidden; animation: photoz-stalled 0s 20s forwards; }
     @keyframes photoz-stalled { to { visibility: visible; } }
+    /* Revealed by the app when the module traps (an allocation it could not satisfy, or a panic):
+       the page would otherwise sit on the last frame, frozen. Static text, so it shows even if Rust
+       can no longer build any. */
+    #photoz_stopped { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 0 16px; text-align: center; color: #e0e0e0; background: rgba(38, 38, 38, 0.92); font: 14px system-ui, sans-serif; pointer-events: auto; }
+    #photoz_stopped[hidden] { display: none; }
+    #photoz_stopped p { margin: 0 0 8px; max-width: 460px; line-height: 1.5; }
+    #photoz_stopped a { color: #ffffff; }
+    #photoz_stopped_detail { color: #b8b8b8; }
   </style>
 </head>
 <body>
@@ -25,6 +34,11 @@
     <p id="photoz_stalled">This is taking longer than usual. If PhotoZ doesn't start, its files may have failed to
       download or come from a different version of this page. <a href="">Reload</a> to try again; the browser
       console lists what failed.</p>
+  </div>
+  <div id="photoz_stopped" hidden role="alert">
+    <p><strong>PhotoZ stopped.</strong></p>
+    <p>Changes since the last save in this tab can't be recovered. <a href="">Reload</a> to start again.</p>
+    <p id="photoz_stopped_detail"></p>
   </div>
 </body>
 </html>

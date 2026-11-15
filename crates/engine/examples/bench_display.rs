@@ -11,7 +11,7 @@
 
 use std::time::Instant;
 
-use photoz_cms::Builtin;
+use craft_cms::Builtin;
 use photoz_color::{Color, ColorMode, SampleType};
 use photoz_doc::{Document, Size};
 use photoz_engine::Session;
