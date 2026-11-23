@@ -14,8 +14,8 @@ fn main() {
     use photoz_tablet::Sample;
     use photoz_tablet::macos::Monitor;
 
-    // Answer cargo-nextest's `--list` (and nothing for `--ignored`), as tests/mac_menu_appkit.rs
-    // in apps/photoz does; `monitor_macos --exact` falls through to the test.
+    // Answer cargo-nextest's `--list` (and nothing for `--ignored`), as every `harness = false`
+    // test must; `monitor_macos --exact` falls through to the test.
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--list") {
         if !args.iter().any(|a| a == "--ignored") {
