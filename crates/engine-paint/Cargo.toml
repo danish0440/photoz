@@ -1,0 +1,29 @@
+[package]
+name = "photoz-engine-paint"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+# The painting commands of the engine (photoz#15710): brushes, erasers, retouching, fills,
+# gradients, red eye, samplers, stamps and the Move tool's picking. Built on photoz-engine-core.
+[dependencies]
+photoz-engine-core = { workspace = true }
+craft-cms = { workspace = true }
+photoz-algo = { workspace = true }
+photoz-color = { workspace = true }
+photoz-compose = { workspace = true }
+photoz-doc = { workspace = true }
+photoz-geom = { workspace = true }
+photoz-io = { workspace = true }
+photoz-paint = { workspace = true }
+photoz-raster = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Core's allocation failpoints, which the brush and fill tests arm.
+[dev-dependencies]
+photoz-engine-core = { workspace = true, features = ["failpoints"] }
