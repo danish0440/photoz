@@ -6,6 +6,7 @@ PhotoZ's release workflow builds platform packages and a draft GitHub Release fr
 
 - platform-specific signing/notarization steps exist for macOS and Windows;
 - signing secrets are scoped through the GitHub `release` environment;
+- the Azure Trusted Signing client that Windows signing loads is pinned to a version and SHA-256, and refused on a mismatch;
 - release artifacts include `SHA256SUMS.txt`;
 - the final release job receives `contents: write`, while build jobs use narrower access;
 - artifacts remain in a draft release until a maintainer publishes them.

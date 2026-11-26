@@ -1,8 +1,32 @@
 rebrand photocraft -> PhotoZ
-about credit inserted in: ['crates/ui-egui/src/dialogs.rs']
+about credit inserted in: NOT FOUND
 launcher patches: []
-lines still naming ArtCraft/getartcraft/discord (non-doc): 4
-crates/ui-egui/src/dialogs.rs:556: // PINTAZ-ABOUT: required credit (Apache-2.0 change notice; ArtCraft brand licence)
-crates/ui-egui/src/dialogs.rs:558: ui.weak("Based on PhotoCraft by Storytold (ArtCraft), Apache-2.0. Changes by PINTAZ TECHNOLOGIES.");
+lines still naming ArtCraft/getartcraft/discord (non-doc): 28
+packaging/windows/install-policy.wxi:34: <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultMachineFolder" Value="[%ProgramFiles(x86)]\ArtCraft\PhotoZ\" After="CraftRestoreUserFolder" Sequence="ui" Co
+packaging/windows/install-policy.wxi:35: <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultMachineFolder32" Value="[%ProgramFiles]\ArtCraft\PhotoZ\" After="CraftDefaultMachineFolder" Sequence="ui" Co
+packaging/windows/install-policy.wxi:36: <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultUserFolder" Value="[LocalAppDataFolder]Programs\ArtCraft\PhotoZ\" After="CraftDefaultMachineFolder32" Sequen
+packaging/windows/install-policy.wxi:38: <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultMachineFolder" Value="[%ProgramW6432]\ArtCraft\PhotoZ\" After="CraftRestoreUserFolder" Sequence="ui" Conditi
+packaging/windows/install-policy.wxi:39: <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultUserFolder" Value="[LocalAppDataFolder]Programs\ArtCraft\PhotoZ\" After="CraftDefaultMachineFolder" Sequence
+packaging/windows/install-policy.wxi:49: <Control Id="Info" Type="Text" X="20" Y="50" Width="330" Height="30" Text="{\CraftScopeText}An update keeps the existing folder. New copies use the ArtCraft fol
+packaging/windows/check-install-policy.ps1:58: if ($dirs['INSTALLFOLDER'][0] -ne 'CraftSuiteFolder' -or $dirs['CraftSuiteFolder'][1] -ne 'ArtCraft' -or
+packaging/windows/check-install-policy.ps1:60: throw 'Launcher new-install folder must be under the per-user ArtCraft suite root.'
+packaging/windows/check-install-policy.ps1:91: $directories['CraftSuiteFolder'][1] -ne 'ArtCraft') { throw 'Expected the app under the ArtCraft suite folder.' }
+packaging/windows/check-install-policy.ps1:165: $machineFolder = (Join-Path $machineRoot "ArtCraft\$($policy.name)") + '\'
+packaging/windows/check-install-policy.ps1:175: $wanted = if ($scope -eq '1') { $machineFolder } else { (Join-Path $env:LOCALAPPDATA "Programs\ArtCraft\$($policy.name)") + '\' }
+packaging/windows/check-install-policy.ps1:182: $userDefault = (Join-Path $env:LOCALAPPDATA "Programs\ArtCraft\$($policy.name)") + '\'
+packaging/linux/flatpak/com.pintaz.photoz.yml:23: - --filesystem=xdg-data/ArtCraft/versions:ro
+packaging/linux/flatpak/com.pintaz.photoz.bundle.yml:22: - --filesystem=xdg-data/ArtCraft/versions:ro
+apps/photoz/src/main.rs:94: /// `Documents/ArtCraft/Agents/PhotoZ`; Nightly uses its private profile's `AgentFiles`.
+apps/photoz/src/main.rs:122: /// The app's name in its default agent folder, `Documents/ArtCraft/Agents/PhotoZ`.
+apps/photoz/src/main.rs:1268: let stable = dir.join("redirected Documents/ArtCraft/Agents/PhotoZ");
+apps/photoz/src/main.rs:1292: let stable = dir.join("redirected Documents/ArtCraft/Agents/PhotoZ");
+apps/photoz/src/profile_root.rs:403: let stable = fixture.home().join("Documents/ArtCraft/Agents/PhotoZ");
+apps/photoz/src/profile_root.rs:421: let stable = fixture.root.join("redirected documents/ArtCraft/Agents/PhotoZ");
+apps/photoz/src/profile_root.rs:508: let nightly = data.join("ArtCraftLauncher/nightly/profiles/photoz");
+apps/photoz/src/profile_root.rs:534: let valid = library.join("Application Support/ArtCraftLauncher/nightly/profiles/photoz");
+apps/photoz/src/profile_root.rs:563: let sibling = local.join("Programs").join("Upstream").join("ArtCraftLauncher").join("nightly").join("photoz");
+crates/io/src/pdf/tests.rs:396: assert!(xmp.contains("xmlns:pcsp=\"http://ns.getartcraft.com/photoz/spot-plates/1.0/\""), "{xmp}");
 crates/ui-egui/src/links.rs:2: //! bar all open these. URLs follow the crafting-app pattern (`getartcraft.com/apps/<app>`,
-crates/ui-egui/src/links.rs:44: /// "PhotoZ website · GitHub · ArtCraft" as links, centred. Clicks route through [`open`] (the
+crates/ui-egui/src/prefs/prefs_ui/agents.rs:1: //! Agents in the open window: the agent link follows Preferences › Integrations and the ArtCraft
+crates/automation/src/live.rs:55: /// The default agent folder for an empty folder setting: `Documents/ArtCraft/Agents/PhotoZ`
+crates/automation/src/server.rs:790: description = "Where this app opens and saves files for agents. Put files the app should open in read_folder (or a folder below it) and find what it saves in wr
