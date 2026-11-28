@@ -1,8 +1,17 @@
+ast-grep.yml
+cache-prune.yml
 ci.yml
 docs.yml
 freebsd.yml
+house-rules.yml
+nightly-dispatch.yml
+nightly-macos.yml
+nightly-sign.yml
+nightly.yml
 nix.yml
+notify-services.yml
 packaging-lint.yml
 perf-nightly.yml
 release.yml
+sonarcloud.yml
 windows-arm64.yml
