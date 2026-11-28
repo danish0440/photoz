@@ -13,6 +13,7 @@ photoz-color = { workspace = true }
 photoz-raster = { workspace = true }
 photoz-doc = { workspace = true }
 photoz-vector = { workspace = true }
+craft-cms = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rayon = { workspace = true }
